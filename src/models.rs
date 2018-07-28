@@ -1,3 +1,4 @@
+// use super::schema::accounts;
 
 // CREATE TABLE accounts (
 //  guid text(32) PRIMARY KEY NOT NULL, 
@@ -14,17 +15,17 @@
 
 
 #[derive(Queryable)]
-pub struct Accounts {
+pub struct Account {
     pub guid: String,
     pub name: String,
     pub account_type: String,
-    pub commodity_guid: String,
+    pub commodity_guid: Option<String>,
     pub commodity_scu: i32,
     pub non_std_scu: i32,
-    pub parent_guid: String,
-    pub code: String,
-    pub description: String,
-    pub hidden: i32,
-    pub placeholder: i32
+    pub parent_guid: Option<String>,
+    pub code: Option<String>,
+    pub description: Option<String>,
+    pub hidden: Option<i32>,
+    pub placeholder: Option<i32>
 }
 
