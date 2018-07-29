@@ -46,7 +46,7 @@ pub fn list_entries(
 ) {
     use schema::splits::dsl::*;
     use schema::transactions::dsl::*;
-    
+
     let join = splits.inner_join(transactions);
 
     let mut query = join.into_boxed();
@@ -66,7 +66,7 @@ pub fn list_entries(
         .expect("Error loading splits");
 
     println!("Displaying {} splits", results.len());
-    for (split,tx) in results {
+    for (split, tx) in results {
         println!(
             "[{}]<{}> - @{} - '{}' - {}({}) {}({})",
             split.account_guid,

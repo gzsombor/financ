@@ -1,8 +1,7 @@
 use schema::{accounts, splits, transactions};
 
 joinable!(splits -> transactions (tx_guid));
-joinable!(splits -> accounts (account_guid)); 
-
+joinable!(splits -> accounts (account_guid));
 
 #[derive(Queryable)]
 pub struct Account {
