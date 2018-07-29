@@ -11,7 +11,7 @@ pub mod schema;
 pub mod utils;
 
 use clap::{App, Arg, SubCommand};
-use commands::list_accounts;
+use commands::{list_accounts, list_entries};
 use utils::establish_connection;
 
 fn main() {
@@ -55,6 +55,42 @@ fn main() {
                         .takes_value(true),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("splits")
+                .arg(
+                    Arg::with_name("limit")
+                        .short("l")
+                        .long("limit")
+                        .help("Limit number of splits")
+                        .required(false)
+                        .validator(is_a_number)
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("guid")
+                        .short("g")
+                        .long("guid")
+                        .help("Splits with the given account id")
+                        .required(false)
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("txid")
+                        .short("t")
+                        .long("txid")
+                        .help("Splits with the given transaction id ")
+                        .required(false)
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("memo")
+                        .short("m")
+                        .long("memo")
+                        .help("Splits with the given memo")
+                        .required(false)
+                        .takes_value(true),
+                ),
+        )
         .get_matches();
 
     if let Some(ls_acc_cmd) = matches.subcommand_matches("list-accounts") {
@@ -65,6 +101,15 @@ fn main() {
 
         let connection = establish_connection();
         list_accounts(&connection, limit, name, parent, account_type);
+    }
+    if let Some(entries_cmd) = matches.subcommand_matches("splits") {
+        let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
+        let txid = value_t!(entries_cmd, "txid", String).ok();
+        let memo = value_t!(entries_cmd, "memo", String).ok();
+        let guid = value_t!(entries_cmd, "guid", String).ok();
+
+        let connection = establish_connection();
+        list_entries(&connection, limit, txid, guid, memo);
     }
 }
 

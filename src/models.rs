@@ -27,3 +27,20 @@ pub struct Account {
     pub hidden: Option<i32>,
     pub placeholder: Option<i32>,
 }
+
+#[derive(Queryable)]
+pub struct Split {
+    pub guid: String,
+    pub tx_guid: String,
+    pub account_guid: String,
+    pub memo: String,
+    pub action: String,
+    pub reconcile_state: String,
+    pub reconcile_date: Option<String>,
+
+    pub value_num: i64,
+    pub value_denom: i64,
+    pub quantity_num: i64,
+    pub quantity_denom: i64,
+    pub lot_guid: Option<String>,
+}
