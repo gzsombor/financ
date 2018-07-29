@@ -1,7 +1,7 @@
 // use self::financ::*;
 // #use self::financ::models::*;
 use diesel::prelude::*;
-use models::{Account, Split};
+use models::{Account, Split, Transaction};
 
 pub fn list_accounts(
     connection: &SqliteConnection,
@@ -45,8 +45,11 @@ pub fn list_entries(
     name_filter: Option<String>,
 ) {
     use schema::splits::dsl::*;
+    use schema::transactions::dsl::*;
+    
+    let join = splits.inner_join(transactions);
 
-    let mut query = splits.into_boxed();
+    let mut query = join.into_boxed();
     if let Some(txid_txt) = txid_filter {
         query = query.filter(tx_guid.like(format!("%{}%", txid_txt)));
     }
@@ -59,15 +62,17 @@ pub fn list_entries(
 
     let results = query
         .limit(limit)
-        .load::<Split>(connection)
+        .load::<(Split, Transaction)>(connection)
         .expect("Error loading splits");
 
     println!("Displaying {} splits", results.len());
-    for split in results {
+    for (split,tx) in results {
         println!(
-            "[{}]<{}> - {}({}) {}({})",
+            "[{}]<{}> - @{} - '{}' - {}({}) {}({})",
             split.account_guid,
             split.tx_guid,
+            tx.post_date.unwrap_or_else(|| "".to_string()),
+            tx.description.unwrap_or_else(|| "".to_string()),
             split.value_num,
             split.value_denom,
             split.quantity_num,

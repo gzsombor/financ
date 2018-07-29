@@ -1,17 +1,8 @@
-// use super::schema::accounts;
+use schema::{accounts, splits, transactions};
 
-// CREATE TABLE accounts (
-//  guid text(32) PRIMARY KEY NOT NULL,
-// name text(2048) NOT NULL,
-// account_type text(2048) NOT NULL,
-// commodity_guid text(32),
-// commodity_scu integer NOT NULL,
-// non_std_scu integer NOT NULL,
-// parent_guid text(32),
-// code text(2048),
-// description text(2048),
-// hidden integer,
-// placeholder integer);
+joinable!(splits -> transactions (tx_guid));
+joinable!(splits -> accounts (account_guid)); 
+
 
 #[derive(Queryable)]
 pub struct Account {
@@ -43,4 +34,14 @@ pub struct Split {
     pub quantity_num: i64,
     pub quantity_denom: i64,
     pub lot_guid: Option<String>,
+}
+
+#[derive(Queryable)]
+pub struct Transaction {
+    pub guid: String,
+    pub currency_guid: String,
+    pub num: String,
+    pub post_date: Option<String>,
+    pub enter_date: Option<String>,
+    pub description: Option<String>,
 }
