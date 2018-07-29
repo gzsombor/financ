@@ -26,12 +26,29 @@ fn main() {
 	    	              	.help("Limit number of accounts")
 	        	          	.required(false)
 	            	      	.validator(is_a_number)
-		                  	.takes_value(true)))
+		                  	.takes_value(true))
+		                 .arg(Arg::with_name("name")
+		                  	.short("n")
+		                  	.long("name")
+	    	              	.help("Limit to accounts which name contains the specified string")
+	        	          	.required(false)
+		                  	.takes_value(true))
+		                 .arg(Arg::with_name("parent_guid")
+		                  	.short("p")
+		                  	.long("parent")
+	    	              	.help("Limit to the childs accounts")
+	        	          	.required(false)
+		                  	.takes_value(true))
+		                 )
 	                 .get_matches();
+	                 
 	if let Some(ls_acc_cmd) = matches.subcommand_matches("list-accounts") {
     	let limit = value_t!(ls_acc_cmd, "limit", i64).unwrap_or(10); 
+    	let name = value_t!(ls_acc_cmd, "name", String).ok(); 
+    	let parent = value_t!(ls_acc_cmd, "parent_guid", String).ok(); 
+
 		let connection = establish_connection();
-		list_accounts(&connection, limit);
+		list_accounts(&connection, limit, name, parent);
 	}
 }
 
