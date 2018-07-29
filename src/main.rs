@@ -45,6 +45,14 @@ fn main() {
                         .help("Limit to the childs accounts")
                         .required(false)
                         .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("type")
+                        .short("t")
+                        .long("type")
+                        .help("Limit to specified account types")
+                        .required(false)
+                        .takes_value(true),
                 ),
         )
         .get_matches();
@@ -53,9 +61,10 @@ fn main() {
         let limit = value_t!(ls_acc_cmd, "limit", i64).unwrap_or(10);
         let name = value_t!(ls_acc_cmd, "name", String).ok();
         let parent = value_t!(ls_acc_cmd, "parent_guid", String).ok();
+        let account_type = value_t!(ls_acc_cmd, "type", String).ok();
 
         let connection = establish_connection();
-        list_accounts(&connection, limit, name, parent);
+        list_accounts(&connection, limit, name, parent, account_type);
     }
 }
 

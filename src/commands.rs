@@ -8,6 +8,7 @@ pub fn list_accounts(
     limit: i64,
     name_filter: Option<String>,
     parent_filter: Option<String>,
+    type_filter: Option<String>,
 ) {
     use schema::accounts::dsl::*;
 
@@ -17,6 +18,9 @@ pub fn list_accounts(
     }
     if let Some(parent_txt) = parent_filter {
         query = query.filter(parent_guid.like(format!("%{}%", parent_txt)));
+    }
+    if let Some(type_txt) = type_filter {
+        query = query.filter(account_type.like(format!("%{}%", type_txt)));
     }
 
     let results = query
