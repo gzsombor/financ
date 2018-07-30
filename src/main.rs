@@ -4,12 +4,14 @@ extern crate diesel;
 extern crate dotenv;
 #[macro_use]
 extern crate clap;
+extern crate chrono;
 
 pub mod commands;
 pub mod models;
 pub mod schema;
 pub mod utils;
 
+use chrono::prelude::*;
 use clap::{App, Arg, SubCommand};
 use commands::{list_accounts, list_entries};
 use utils::establish_connection;
@@ -83,6 +85,22 @@ fn main() {
                         .takes_value(true),
                 )
                 .arg(
+                    Arg::with_name("before")
+                        .short("b")
+                        .long("before")
+                        .help("Splits before the given date in yyyy-mm-dd format")
+                        .required(false)
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("after")
+                        .short("a")
+                        .long("after")
+                        .help("Splits after the given date in yyyy-mm-dd format")
+                        .required(false)
+                        .takes_value(true),
+                )
+                .arg(
                     Arg::with_name("memo")
                         .short("m")
                         .long("memo")
@@ -107,10 +125,16 @@ fn main() {
         let txid = value_t!(entries_cmd, "txid", String).ok();
         let memo = value_t!(entries_cmd, "memo", String).ok();
         let guid = value_t!(entries_cmd, "guid", String).ok();
+        let before = to_date(value_t!(entries_cmd, "before", String).ok());
+        let after = to_date(value_t!(entries_cmd, "after", String).ok());
 
         let connection = establish_connection();
-        list_entries(&connection, limit, txid, guid, memo);
+        list_entries(&connection, limit, txid, guid, memo, before, after);
     }
+}
+
+fn to_date(date_string: Option<String>) -> Option<NaiveDate> {
+    date_string.and_then(|x| NaiveDate::parse_from_str(x.as_ref(), "%Y-%m-%d").ok())
 }
 
 fn is_a_number(v: String) -> Result<(), String> {

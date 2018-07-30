@@ -1,5 +1,4 @@
-// use self::financ::*;
-// #use self::financ::models::*;
+use chrono::prelude::*;
 use diesel::prelude::*;
 use models::{Account, Split, Transaction};
 
@@ -43,6 +42,8 @@ pub fn list_entries(
     txid_filter: Option<String>,
     guid_filter: Option<String>,
     name_filter: Option<String>,
+    before_filter: Option<NaiveDate>,
+    after_filter: Option<NaiveDate>,
 ) {
     use schema::splits::dsl::*;
     use schema::transactions::dsl::*;
@@ -58,6 +59,14 @@ pub fn list_entries(
     }
     if let Some(name_txt) = name_filter {
         query = query.filter(memo.like(format!("%{}%", name_txt)));
+    }
+    if let Some(after_date) = after_filter {
+        let after_as_txt = after_date.and_hms(0, 0, 0).format("%Y%m%d%H%M%S");
+        query = query.filter(post_date.ge(after_as_txt.to_string()));
+    }
+    if let Some(before_date) = before_filter {
+        let before_as_txt = before_date.and_hms(23, 59, 59).format("%Y%m%d%H%M%S");
+        query = query.filter(post_date.le(before_as_txt.to_string()));
     }
 
     let results = query
