@@ -11,7 +11,6 @@ pub mod models;
 pub mod schema;
 pub mod utils;
 
-use chrono::prelude::*;
 use clap::{App, Arg, SubCommand};
 use commands::{list_accounts, list_entries};
 use utils::{establish_connection, to_date};

@@ -1,3 +1,4 @@
+use chrono::{NaiveDate, NaiveDateTime};
 use schema::{accounts, splits, transactions};
 
 joinable!(splits -> transactions (tx_guid));
@@ -43,4 +44,38 @@ pub struct Transaction {
     pub post_date: Option<String>,
     pub enter_date: Option<String>,
     pub description: Option<String>,
+}
+
+impl Transaction {
+    pub fn posting(&self) -> Option<NaiveDateTime> {
+        parse_date(&self.post_date)
+    }
+    pub fn entering(&self) -> Option<NaiveDateTime> {
+        parse_date(&self.enter_date)
+    }
+}
+
+fn parse_date(value: &Option<String>) -> Option<NaiveDateTime> {
+    value
+        .clone()
+        .and_then(|date_str| NaiveDateTime::parse_from_str(date_str.as_ref(), "%Y%m%d%H%M%S").ok())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_parse_none() {
+        assert_eq!(parse_date(&None), None);
+    }
+
+    #[test]
+    fn test_parse_string() {
+        assert_eq!(
+            parse_date(&Some("20161020203213".to_string())),
+            Some(NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13))
+        );
+    }
+
 }
