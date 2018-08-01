@@ -14,7 +14,7 @@ pub mod utils;
 use chrono::prelude::*;
 use clap::{App, Arg, SubCommand};
 use commands::{list_accounts, list_entries};
-use utils::establish_connection;
+use utils::{establish_connection, to_date};
 
 fn main() {
     let matches = App::new(crate_name!())
@@ -131,10 +131,6 @@ fn main() {
         let connection = establish_connection();
         list_entries(&connection, limit, txid, guid, memo, before, after);
     }
-}
-
-fn to_date(date_string: Option<String>) -> Option<NaiveDate> {
-    date_string.and_then(|x| NaiveDate::parse_from_str(x.as_ref(), "%Y-%m-%d").ok())
 }
 
 fn is_a_number(v: String) -> Result<(), String> {
