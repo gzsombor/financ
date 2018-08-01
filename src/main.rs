@@ -11,7 +11,7 @@ pub mod models;
 pub mod schema;
 pub mod utils;
 
-use clap::{App, Arg, SubCommand};
+use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use commands::{list_accounts, list_entries};
 use utils::{establish_connection, to_date};
 
@@ -108,28 +108,46 @@ fn main() {
                         .takes_value(true),
                 ),
         )
+        .subcommand(
+            SubCommand::with_name("correlate").arg(
+                Arg::with_name("file")
+                    .short("f")
+                    .long("file")
+                    .help("The file which contains a list of transaction to correlate")
+                    .required(true)
+                    .takes_value(true),
+            ),
+        )
+        .setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
-    if let Some(ls_acc_cmd) = matches.subcommand_matches("list-accounts") {
-        let limit = value_t!(ls_acc_cmd, "limit", i64).unwrap_or(10);
-        let name = value_t!(ls_acc_cmd, "name", String).ok();
-        let parent = value_t!(ls_acc_cmd, "parent_guid", String).ok();
-        let account_type = value_t!(ls_acc_cmd, "type", String).ok();
-
-        let connection = establish_connection();
-        list_accounts(&connection, limit, name, parent, account_type);
+    match matches.subcommand() {
+        ("list-accounts", Some(ls_acc_cmd)) => handle_list_accounts(ls_acc_cmd),
+        ("splits", Some(cmd)) => handle_list_entries(cmd),
+        _ => (),
     }
-    if let Some(entries_cmd) = matches.subcommand_matches("splits") {
-        let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
-        let txid = value_t!(entries_cmd, "txid", String).ok();
-        let memo = value_t!(entries_cmd, "memo", String).ok();
-        let guid = value_t!(entries_cmd, "guid", String).ok();
-        let before = to_date(value_t!(entries_cmd, "before", String).ok());
-        let after = to_date(value_t!(entries_cmd, "after", String).ok());
+}
 
-        let connection = establish_connection();
-        list_entries(&connection, limit, txid, guid, memo, before, after);
-    }
+fn handle_list_accounts(ls_acc_cmd: &ArgMatches) {
+    let limit = value_t!(ls_acc_cmd, "limit", i64).unwrap_or(10);
+    let name = value_t!(ls_acc_cmd, "name", String).ok();
+    let parent = value_t!(ls_acc_cmd, "parent_guid", String).ok();
+    let account_type = value_t!(ls_acc_cmd, "type", String).ok();
+
+    let connection = establish_connection();
+    list_accounts(&connection, limit, name, parent, account_type);
+}
+
+fn handle_list_entries(entries_cmd: &ArgMatches) {
+    let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
+    let txid = value_t!(entries_cmd, "txid", String).ok();
+    let memo = value_t!(entries_cmd, "memo", String).ok();
+    let guid = value_t!(entries_cmd, "guid", String).ok();
+    let before = to_date(value_t!(entries_cmd, "before", String).ok());
+    let after = to_date(value_t!(entries_cmd, "after", String).ok());
+
+    let connection = establish_connection();
+    list_entries(&connection, limit, txid, guid, memo, before, after);
 }
 
 fn is_a_number(v: String) -> Result<(), String> {
