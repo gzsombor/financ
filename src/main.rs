@@ -96,7 +96,7 @@ fn main() {
                 )
                 .arg(
                     Arg::with_name("after")
-                        .short("a")
+                        .short("f")
                         .long("after")
                         .help("Splits after the given date in yyyy-mm-dd format")
                         .required(false)
@@ -107,6 +107,14 @@ fn main() {
                         .short("m")
                         .long("memo")
                         .help("Splits with the given memo")
+                        .required(false)
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("description")
+                        .short("d")
+                        .long("description")
+                        .help("Transaction with the given description")
                         .required(false)
                         .takes_value(true),
                 ),
@@ -154,13 +162,14 @@ fn handle_list_accounts(ls_acc_cmd: &ArgMatches) {
 fn handle_list_entries(entries_cmd: &ArgMatches) {
     let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
     let txid = value_t!(entries_cmd, "txid", String).ok();
-    let memo = value_t!(entries_cmd, "memo", String).ok();
     let account = value_t!(entries_cmd, "account", String).ok();
+    let description = value_t!(entries_cmd, "description", String).ok();
+    let memo = value_t!(entries_cmd, "memo", String).ok();
     let before = to_date(value_t!(entries_cmd, "before", String).ok());
     let after = to_date(value_t!(entries_cmd, "after", String).ok());
 
     let connection = establish_connection();
-    list_entries(&connection, limit, txid, account, memo, before, after);
+    list_entries(&connection, limit, txid, account, description, memo, before, after);
 }
 
 fn handle_correlate(cmd: &ArgMatches) {

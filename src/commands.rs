@@ -40,8 +40,9 @@ pub fn list_entries(
     connection: &SqliteConnection,
     limit: i64,
     txid_filter: Option<String>,
-    guid_filter: Option<String>,
-    name_filter: Option<String>,
+    account_filter: Option<String>,
+    description_filter: Option<String>,
+    memo_filter: Option<String>,
     before_filter: Option<NaiveDate>,
     after_filter: Option<NaiveDate>,
 ) {
@@ -54,11 +55,14 @@ pub fn list_entries(
     if let Some(txid_txt) = txid_filter {
         query = query.filter(tx_guid.like(format!("%{}%", txid_txt)));
     }
-    if let Some(guid_txt) = guid_filter {
-        query = query.filter(account_guid.like(format!("%{}%", guid_txt)));
+    if let Some(account_txt) = account_filter {
+        query = query.filter(account_guid.like(format!("%{}%", account_txt)));
     }
-    if let Some(name_txt) = name_filter {
+    if let Some(name_txt) = memo_filter {
         query = query.filter(memo.like(format!("%{}%", name_txt)));
+    }
+    if let Some(description_txt) = description_filter {
+        query = query.filter(description.like(format!("%{}%", description_txt)));
     }
     if let Some(after_date) = after_filter {
         let after_as_txt = after_date.and_hms(0, 0, 0).format("%Y%m%d%H%M%S");
@@ -77,11 +81,12 @@ pub fn list_entries(
     println!("Displaying {} splits", results.len());
     for (split, tx) in results {
         println!(
-            "[{}]<{}> - @{} - '{}' - {}({}) {}({})",
+            "[{}]<{}> - @{} - '{}' - {} - {}({}) {}({})",
             split.account_guid,
             split.tx_guid,
             tx.post_date.unwrap_or_else(|| "".to_string()),
             tx.description.unwrap_or_else(|| "".to_string()),
+            split.memo,
             split.value_num,
             split.value_denom,
             split.quantity_num,
