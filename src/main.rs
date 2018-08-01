@@ -4,15 +4,18 @@ extern crate diesel;
 extern crate dotenv;
 #[macro_use]
 extern crate clap;
+extern crate calamine;
 extern crate chrono;
 
 pub mod commands;
+pub mod correlator;
 pub mod models;
 pub mod schema;
 pub mod utils;
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use commands::{list_accounts, list_entries};
+use correlator::correlate;
 use utils::{establish_connection, to_date};
 
 fn main() {
@@ -68,9 +71,9 @@ fn main() {
                         .takes_value(true),
                 )
                 .arg(
-                    Arg::with_name("guid")
-                        .short("g")
-                        .long("guid")
+                    Arg::with_name("account")
+                        .short("a")
+                        .long("account")
                         .help("Splits with the given account id")
                         .required(false)
                         .takes_value(true),
@@ -109,21 +112,31 @@ fn main() {
                 ),
         )
         .subcommand(
-            SubCommand::with_name("correlate").arg(
-                Arg::with_name("file")
-                    .short("f")
-                    .long("file")
-                    .help("The file which contains a list of transaction to correlate")
-                    .required(true)
-                    .takes_value(true),
-            ),
+            SubCommand::with_name("correlate")
+                .arg(
+                    Arg::with_name("file")
+                        .short("f")
+                        .long("file")
+                        .help("The file which contains a list of transaction to correlate")
+                        .required(true)
+                        .takes_value(true),
+                )
+                .arg(
+                    Arg::with_name("account")
+                        .short("a")
+                        .long("account")
+                        .help("Account id to correlate with")
+                        .required(true)
+                        .takes_value(true),
+                ),
         )
         .setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
     match matches.subcommand() {
-        ("list-accounts", Some(ls_acc_cmd)) => handle_list_accounts(ls_acc_cmd),
+        ("list-accounts", Some(cmd)) => handle_list_accounts(cmd),
         ("splits", Some(cmd)) => handle_list_entries(cmd),
+        ("correlate", Some(cmd)) => handle_correlate(cmd),
         _ => (),
     }
 }
@@ -142,12 +155,20 @@ fn handle_list_entries(entries_cmd: &ArgMatches) {
     let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
     let txid = value_t!(entries_cmd, "txid", String).ok();
     let memo = value_t!(entries_cmd, "memo", String).ok();
-    let guid = value_t!(entries_cmd, "guid", String).ok();
+    let account = value_t!(entries_cmd, "account", String).ok();
     let before = to_date(value_t!(entries_cmd, "before", String).ok());
     let after = to_date(value_t!(entries_cmd, "after", String).ok());
 
     let connection = establish_connection();
-    list_entries(&connection, limit, txid, guid, memo, before, after);
+    list_entries(&connection, limit, txid, account, memo, before, after);
+}
+
+fn handle_correlate(cmd: &ArgMatches) {
+    let input_file = value_t!(cmd, "file", String).unwrap();
+    let account = value_t!(cmd, "account", String).unwrap();
+
+    let connection = establish_connection();
+    correlate(&connection, input_file, account);
 }
 
 fn is_a_number(v: String) -> Result<(), String> {
