@@ -14,7 +14,7 @@ pub mod schema;
 pub mod utils;
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-use commands::{list_accounts, list_entries};
+use commands::list_accounts;
 use correlator::correlate;
 use utils::{establish_connection, to_date};
 
@@ -148,24 +148,24 @@ fn handle_list_accounts(ls_acc_cmd: &ArgMatches) {
 
 fn handle_list_entries(entries_cmd: &ArgMatches) {
     let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
-    let txid = value_t!(entries_cmd, "txid", String).ok();
-    let account = value_t!(entries_cmd, "account", String).ok();
-    let description = value_t!(entries_cmd, "description", String).ok();
-    let memo = value_t!(entries_cmd, "memo", String).ok();
-    let before = to_date(value_t!(entries_cmd, "before", String).ok());
-    let after = to_date(value_t!(entries_cmd, "after", String).ok());
+    let txid_filter = value_t!(entries_cmd, "txid", String).ok();
+    let account_filter = value_t!(entries_cmd, "account", String).ok();
+    let description_filter = value_t!(entries_cmd, "description", String).ok();
+    let memo_filter = value_t!(entries_cmd, "memo", String).ok();
+    let before_filter = to_date(value_t!(entries_cmd, "before", String).ok());
+    let after_filter = to_date(value_t!(entries_cmd, "after", String).ok());
 
     let connection = establish_connection();
-    list_entries(
-        &connection,
+    let q = commands::TransactionQuery {
         limit,
-        txid,
-        account,
-        description,
-        memo,
-        before,
-        after,
-    );
+        txid_filter,
+        account_filter,
+        description_filter,
+        memo_filter,
+        before_filter,
+        after_filter,
+    };
+    q.execute_and_display(&connection);
 }
 
 fn handle_correlate(cmd: &ArgMatches) {

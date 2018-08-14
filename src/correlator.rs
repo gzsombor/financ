@@ -1,4 +1,8 @@
-use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets, Xlsx};
+use std::collections::BTreeMap;
+
+use commands::TransactionQuery;
+
+use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::NaiveDate;
 use diesel::prelude::*;
 
@@ -17,12 +21,12 @@ pub struct ExternalTransaction {
     other_account: Option<String>,
 }
 
-struct TransactionList {
+/*struct TransactionList {
     transactions: Vec<ExternalTransaction>,
     start_date: NaiveDate,
     end_date: NaiveDate,
 }
-
+*/
 /*
 impl ExternalTransaction {
 	pub fn new(date: NaiveDate,	amount: i64, description: String) -> Self {
@@ -105,4 +109,25 @@ pub fn correlate(connection: &SqliteConnection, input_file: String, account: Str
 
     let tx = sd.load("2015-06-");
     println!("Full transaction list: {:?}", tx);
+    let db_query = TransactionQuery {
+        limit: 10000,
+        txid_filter: None,
+        account_filter: Some(account),
+        description_filter: None,
+        memo_filter: None,
+        before_filter: None,
+        after_filter: None,
+    };
+    let db_rows = db_query.execute(&connection);
+    println!("loaded {} transactions from the database", db_rows.len());
+
+    let mut trans_map = BTreeMap::new();
+
+    for row in db_rows {
+        if let Some(posting_date) = row.1.posting().map(|date_time| date_time.date()) {
+            let list = trans_map.entry(posting_date).or_insert_with(Vec::new);
+            list.push(row);
+        }
+    }
+    println!("found {} separate date", trans_map.len());
 }
