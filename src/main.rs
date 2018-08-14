@@ -33,24 +33,21 @@ fn main() {
                         .required(false)
                         .validator(is_a_number)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("name")
                         .short("n")
                         .long("name")
                         .help("Limit to accounts which name contains the specified string")
                         .required(false)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("parent_guid")
                         .short("p")
                         .long("parent")
                         .help("Limit to the childs accounts")
                         .required(false)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("type")
                         .short("t")
                         .long("type")
@@ -58,8 +55,7 @@ fn main() {
                         .required(false)
                         .takes_value(true),
                 ),
-        )
-        .subcommand(
+        ).subcommand(
             SubCommand::with_name("splits")
                 .arg(
                     Arg::with_name("limit")
@@ -69,48 +65,42 @@ fn main() {
                         .required(false)
                         .validator(is_a_number)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("account")
                         .short("a")
                         .long("account")
                         .help("Splits with the given account id")
                         .required(false)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("txid")
                         .short("t")
                         .long("txid")
                         .help("Splits with the given transaction id ")
                         .required(false)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("before")
                         .short("b")
                         .long("before")
                         .help("Splits before the given date in yyyy-mm-dd format")
                         .required(false)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("after")
                         .short("f")
                         .long("after")
                         .help("Splits after the given date in yyyy-mm-dd format")
                         .required(false)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("memo")
                         .short("m")
                         .long("memo")
                         .help("Splits with the given memo")
                         .required(false)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("description")
                         .short("d")
                         .long("description")
@@ -118,8 +108,7 @@ fn main() {
                         .required(false)
                         .takes_value(true),
                 ),
-        )
-        .subcommand(
+        ).subcommand(
             SubCommand::with_name("correlate")
                 .arg(
                     Arg::with_name("file")
@@ -128,8 +117,7 @@ fn main() {
                         .help("The file which contains a list of transaction to correlate")
                         .required(true)
                         .takes_value(true),
-                )
-                .arg(
+                ).arg(
                     Arg::with_name("account")
                         .short("a")
                         .long("account")
@@ -137,8 +125,7 @@ fn main() {
                         .required(true)
                         .takes_value(true),
                 ),
-        )
-        .setting(AppSettings::ArgRequiredElseHelp)
+        ).setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
     match matches.subcommand() {
@@ -169,7 +156,16 @@ fn handle_list_entries(entries_cmd: &ArgMatches) {
     let after = to_date(value_t!(entries_cmd, "after", String).ok());
 
     let connection = establish_connection();
-    list_entries(&connection, limit, txid, account, description, memo, before, after);
+    list_entries(
+        &connection,
+        limit,
+        txid,
+        account,
+        description,
+        memo,
+        before,
+        after,
+    );
 }
 
 fn handle_correlate(cmd: &ArgMatches) {
