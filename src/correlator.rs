@@ -104,10 +104,10 @@ fn parse_sheet(range: &Range<DataType>) -> Vec<ExternalTransaction> {
         }).collect()
 }
 
-pub fn correlate(connection: &SqliteConnection, input_file: String, account: String) {
+pub fn correlate(connection: &SqliteConnection, input_file: String, sheet_name: String, account: String) {
     let mut sd = SheetDefinition::new(input_file);
 
-    let tx = sd.load("2015-06-");
+    let tx = sd.load(&sheet_name);
     println!("Full transaction list: {:?}", tx);
     let db_query = TransactionQuery {
         limit: 10000,

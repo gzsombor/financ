@@ -118,6 +118,13 @@ fn main() {
                         .required(true)
                         .takes_value(true),
                 ).arg(
+                    Arg::with_name("sheet_name")
+                        .short("s")
+                        .long("sheet-name")
+                        .help("The name of the sheet")
+                        .required(true)
+                        .takes_value(true),
+                ).arg(
                     Arg::with_name("account")
                         .short("a")
                         .long("account")
@@ -170,10 +177,11 @@ fn handle_list_entries(entries_cmd: &ArgMatches) {
 
 fn handle_correlate(cmd: &ArgMatches) {
     let input_file = value_t!(cmd, "file", String).unwrap();
+    let sheet_name = value_t!(cmd, "sheet_name", String).unwrap();
     let account = value_t!(cmd, "account", String).unwrap();
 
     let connection = establish_connection();
-    correlate(&connection, input_file, account);
+    correlate(&connection, input_file, sheet_name, account);
 }
 
 fn is_a_number(v: String) -> Result<(), String> {
