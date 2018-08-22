@@ -19,7 +19,7 @@ pub struct Account {
     pub placeholder: Option<i32>,
 }
 
-#[derive(Queryable)]
+#[derive(Queryable, Debug)]
 pub struct Split {
     pub guid: String,
     pub tx_guid: String,
@@ -36,7 +36,7 @@ pub struct Split {
     pub lot_guid: Option<String>,
 }
 
-#[derive(Queryable)]
+#[derive(Queryable, Debug)]
 pub struct Transaction {
     pub guid: String,
     pub currency_guid: String,
@@ -44,6 +44,16 @@ pub struct Transaction {
     pub post_date: Option<String>,
     pub enter_date: Option<String>,
     pub description: Option<String>,
+}
+
+impl Split {
+    pub fn is_equal_amount(&self, amount: f64) -> bool {
+        println!(
+            "is_equal_amount {:?} {:?} ?= {}",
+            self.value_num, self.value_denom, amount
+        );
+        (amount * (self.value_denom as f64)) as i64 == self.value_num
+    }
 }
 
 impl Transaction {
