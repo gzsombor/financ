@@ -48,10 +48,10 @@ pub struct Transaction {
 
 impl Split {
     pub fn is_equal_amount(&self, amount: f64) -> bool {
-        println!(
+        /*        println!(
             "is_equal_amount {:?} {:?} ?= {}",
             self.value_num, self.value_denom, amount
-        );
+        );*/
         (amount * (self.value_denom as f64)) as i64 == self.value_num
     }
 }

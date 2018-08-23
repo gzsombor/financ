@@ -1,5 +1,6 @@
 use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
+use std::fmt;
 
 use commands::TransactionQuery;
 
@@ -21,6 +22,26 @@ pub struct ExternalTransaction {
     category: Option<String>,
     description: Option<String>,
     other_account: Option<String>,
+}
+
+impl fmt::Display for ExternalTransaction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(date) = self.date {
+            f.write_str(&date.format("%Y-%m-%d").to_string())?;
+        } else {
+            f.write_str("----------")?;
+        }
+        if let Some(amount) = self.amount {
+            write!(f, " {}", amount);
+        }
+        if let Some(category) = &self.category {
+            write!(f, " [{}]", category);
+        }
+        if let Some(description) = &self.description {
+            write!(f, " - {}", description);
+        }
+        Ok(())
+    }
 }
 
 // [derive(Debug)]
@@ -186,15 +207,26 @@ impl TransactionCorrelator {
         println!("found {} separate date", self.transaction_map.len());
     }
 
-    pub fn match_transactions(&mut self) {
+    pub fn match_transactions(&mut self) -> Vec<ExternalTransaction> {
         let mut working_set = self.external_transactions.clone();
+        println!("Starting with {} transactions", &working_set.len());
         working_set = self.match_transactions_with_delta_day(0, &working_set);
+        println!(
+            "After matching with 0, {} transaction remained as unmatched",
+            &working_set.len()
+        );
         let mut delta_day = 0;
         while !&working_set.is_empty() && delta_day < 10 {
             delta_day = delta_day + 1;
             working_set = self.match_transactions_with_delta_day(delta_day, &working_set);
             working_set = self.match_transactions_with_delta_day(-delta_day, &working_set);
+            println!(
+                "After matching with {}, {} transaction remained as unmatched",
+                &delta_day,
+                &working_set.len()
+            );
         }
+        working_set
     }
 
     // return the unmatched transactions
@@ -251,4 +283,8 @@ pub fn correlate(
 ) {
     let mut correlator = TransactionCorrelator::new(input_file, sheet_name, account);
     correlator.build_mapping(connection);
+    let unmatched_transactions = correlator.match_transactions();
+    for tr in unmatched_transactions {
+        println!(" - {}", &tr);
+    }
 }
