@@ -24,39 +24,17 @@ fn main() {
         .version(crate_version!())
         .author(crate_authors!("\n"))
         .about(crate_description!())
-        .subcommand(
-            SubCommand::with_name("list-accounts")
-                .arg(
-                    Arg::with_name("limit")
-                        .short("l")
-                        .long("limit")
-                        .help("Limit number of accounts")
-                        .required(false)
-                        .validator(is_a_number)
-                        .takes_value(true),
-                ).arg(
-                    Arg::with_name("name")
-                        .short("n")
-                        .long("name")
-                        .help("Limit to accounts which name contains the specified string")
-                        .required(false)
-                        .takes_value(true),
-                ).arg(
-                    Arg::with_name("parent_guid")
-                        .short("p")
-                        .long("parent")
-                        .help("Limit to the childs accounts")
-                        .required(false)
-                        .takes_value(true),
-                ).arg(
-                    Arg::with_name("type")
-                        .short("t")
-                        .long("type")
-                        .help("Limit to specified account types")
-                        .required(false)
-                        .takes_value(true),
-                ),
-        ).subcommand(
+        .subcommand(AccountQuery::add_arguments(
+            SubCommand::with_name("list-accounts").arg(
+                Arg::with_name("limit")
+                    .short("l")
+                    .long("limit")
+                    .help("Limit number of accounts")
+                    .required(false)
+                    .validator(is_a_number)
+                    .takes_value(true),
+            ),
+        )).subcommand(
             SubCommand::with_name("splits")
                 .arg(
                     Arg::with_name("limit")
@@ -109,7 +87,7 @@ fn main() {
                         .required(false)
                         .takes_value(true),
                 ),
-        ).subcommand(
+        ).subcommand(AccountQuery::add_arguments(
             SubCommand::with_name("correlate")
                 .arg(
                     Arg::with_name("file")
@@ -125,15 +103,8 @@ fn main() {
                         .help("The name of the sheet")
                         .required(true)
                         .takes_value(true),
-                ).arg(
-                    Arg::with_name("account")
-                        .short("a")
-                        .long("account")
-                        .help("Account id to correlate with")
-                        .required(true)
-                        .takes_value(true),
                 ),
-        ).setting(AppSettings::ArgRequiredElseHelp)
+        )).setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
     match matches.subcommand() {
