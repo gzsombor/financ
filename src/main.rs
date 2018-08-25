@@ -7,16 +7,17 @@ extern crate clap;
 extern crate calamine;
 extern crate chrono;
 
-pub mod commands;
 pub mod correlator;
 pub mod models;
+mod query;
 pub mod schema;
 pub mod utils;
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-use commands::list_accounts;
 use correlator::correlate;
-use utils::{establish_connection, to_date};
+use query::accounts::AccountQuery;
+use query::transactions::TransactionQuery;
+use utils::establish_connection;
 
 fn main() {
     let matches = App::new(crate_name!())
@@ -144,34 +145,14 @@ fn main() {
 }
 
 fn handle_list_accounts(ls_acc_cmd: &ArgMatches) {
-    let limit = value_t!(ls_acc_cmd, "limit", i64).unwrap_or(10);
-    let name = value_t!(ls_acc_cmd, "name", String).ok();
-    let parent = value_t!(ls_acc_cmd, "parent_guid", String).ok();
-    let account_type = value_t!(ls_acc_cmd, "type", String).ok();
-
     let connection = establish_connection();
-    list_accounts(&connection, limit, name, parent, account_type);
+    let q = AccountQuery::from(ls_acc_cmd);
+    q.execute_and_display(&connection);
 }
 
 fn handle_list_entries(entries_cmd: &ArgMatches) {
-    let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
-    let txid_filter = value_t!(entries_cmd, "txid", String).ok();
-    let account_filter = value_t!(entries_cmd, "account", String).ok();
-    let description_filter = value_t!(entries_cmd, "description", String).ok();
-    let memo_filter = value_t!(entries_cmd, "memo", String).ok();
-    let before_filter = to_date(value_t!(entries_cmd, "before", String).ok());
-    let after_filter = to_date(value_t!(entries_cmd, "after", String).ok());
-
     let connection = establish_connection();
-    let q = commands::TransactionQuery {
-        limit,
-        txid_filter,
-        account_filter,
-        description_filter,
-        memo_filter,
-        before_filter,
-        after_filter,
-    };
+    let q = TransactionQuery::from(entries_cmd);
     q.execute_and_display(&connection);
 }
 

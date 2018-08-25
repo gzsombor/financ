@@ -1,6 +1,9 @@
-use chrono::prelude::*;
+use chrono::naive::NaiveDate;
+use clap::ArgMatches;
 use diesel::prelude::*;
-use models::{Account, Split, Transaction};
+
+use models::{Split, Transaction};
+use utils::to_date;
 
 pub struct TransactionQuery {
     pub limit: i64,
@@ -10,40 +13,6 @@ pub struct TransactionQuery {
     pub memo_filter: Option<String>,
     pub before_filter: Option<NaiveDate>,
     pub after_filter: Option<NaiveDate>,
-}
-
-pub fn list_accounts(
-    connection: &SqliteConnection,
-    limit: i64,
-    name_filter: Option<String>,
-    parent_filter: Option<String>,
-    type_filter: Option<String>,
-) {
-    use schema::accounts::dsl::*;
-
-    let mut query = accounts.into_boxed();
-    if let Some(name_txt) = name_filter {
-        query = query.filter(name.like(format!("%{}%", name_txt)));
-    }
-    if let Some(parent_txt) = parent_filter {
-        query = query.filter(parent_guid.like(format!("%{}%", parent_txt)));
-    }
-    if let Some(type_txt) = type_filter {
-        query = query.filter(account_type.like(format!("%{}%", type_txt)));
-    }
-
-    let results = query
-        .limit(limit)
-        .load::<Account>(connection)
-        .expect("Error loading accounts");
-
-    println!("Displaying {} accounts", results.len());
-    for account in results {
-        println!(
-            "[{}]<{}> - {}",
-            account.account_type, account.guid, account.name
-        );
-    }
 }
 
 impl TransactionQuery {
@@ -97,6 +66,27 @@ impl TransactionQuery {
                 split.quantity_num,
                 split.quantity_denom
             );
+        }
+    }
+}
+
+impl<'a> From<&'a ArgMatches<'a>> for TransactionQuery {
+    fn from(entries_cmd: &ArgMatches) -> Self {
+        let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
+        let txid_filter = value_t!(entries_cmd, "txid", String).ok();
+        let account_filter = value_t!(entries_cmd, "account", String).ok();
+        let description_filter = value_t!(entries_cmd, "description", String).ok();
+        let memo_filter = value_t!(entries_cmd, "memo", String).ok();
+        let before_filter = to_date(value_t!(entries_cmd, "before", String).ok());
+        let after_filter = to_date(value_t!(entries_cmd, "after", String).ok());
+        TransactionQuery {
+            limit,
+            txid_filter,
+            account_filter,
+            description_filter,
+            memo_filter,
+            before_filter,
+            after_filter,
         }
     }
 }

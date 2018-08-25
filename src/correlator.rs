@@ -2,7 +2,7 @@ use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
 use std::fmt;
 
-use commands::TransactionQuery;
+use query::transactions::TransactionQuery;
 
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::{Duration, NaiveDate};
