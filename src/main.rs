@@ -130,7 +130,7 @@ fn handle_list_entries(entries_cmd: &ArgMatches) {
 fn handle_correlate(cmd: &ArgMatches) {
     let input_file = value_t!(cmd, "file", String).unwrap();
     let sheet_name = value_t!(cmd, "sheet_name", String).unwrap();
-    let account = value_t!(cmd, "account", String).unwrap();
+    let account = AccountQuery::from(cmd);
 
     let connection = establish_connection();
     correlate(&connection, input_file, sheet_name, account);

@@ -2,6 +2,7 @@ use std::cell::{Ref, RefCell};
 use std::collections::BTreeMap;
 use std::fmt;
 
+use query::accounts::AccountQuery;
 use query::transactions::TransactionQuery;
 
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
@@ -279,12 +280,17 @@ pub fn correlate(
     connection: &SqliteConnection,
     input_file: String,
     sheet_name: String,
-    account: String,
-) {
-    let mut correlator = TransactionCorrelator::new(input_file, sheet_name, account);
-    correlator.build_mapping(connection);
-    let unmatched_transactions = correlator.match_transactions();
-    for tr in unmatched_transactions {
-        println!(" - {}", &tr);
+    account_query: AccountQuery,
+) -> Option<usize> {
+    if let Some(only_account) = account_query.get_one(&connection) {
+        let mut correlator = TransactionCorrelator::new(input_file, sheet_name, only_account.guid);
+        correlator.build_mapping(connection);
+        let unmatched_transactions = correlator.match_transactions();
+        for tr in &unmatched_transactions {
+            println!(" - {}", &tr);
+        }
+        Some(unmatched_transactions.len())
+    } else {
+        None
     }
 }

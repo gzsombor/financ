@@ -46,6 +46,12 @@ pub struct Transaction {
     pub description: Option<String>,
 }
 
+impl Account {
+    pub fn display(&self) {
+        println!("[{}]<{}> - {}", self.account_type, self.guid, self.name);
+    }
+}
+
 impl Split {
     pub fn is_equal_amount(&self, amount: f64) -> bool {
         /*        println!(

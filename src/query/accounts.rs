@@ -39,11 +39,23 @@ impl AccountQuery {
         let results = self.execute(&connection);
         println!("Displaying {} accounts", results.len());
         for account in results {
-            println!(
-                "[{}]<{}> - {}",
-                account.account_type, account.guid, account.name
-            );
+            account.display();
         }
+    }
+
+    pub fn get_one(&self, connection: &SqliteConnection) -> Option<Account> {
+        let mut account_list = self.execute(&connection);
+        if account_list.len() != 1 {
+            println!(
+                "Account filter should pick only one account, found : {}",
+                &account_list.len()
+            );
+            for acc in account_list {
+                acc.display();
+            }
+            return None;
+        }
+        account_list.pop()
     }
 
     pub fn add_arguments<'a, 'b>(app: App<'a, 'b>) -> App<'a, 'b> {
