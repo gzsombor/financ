@@ -34,8 +34,8 @@ fn main() {
                     .validator(is_a_number)
                     .takes_value(true),
             ),
-        )).subcommand(
-            SubCommand::with_name("splits")
+        )).subcommand(AccountQuery::add_arguments(
+            SubCommand::with_name("transactions")
                 .arg(
                     Arg::with_name("limit")
                         .short("l")
@@ -43,13 +43,6 @@ fn main() {
                         .help("Limit number of splits")
                         .required(false)
                         .validator(is_a_number)
-                        .takes_value(true),
-                ).arg(
-                    Arg::with_name("account")
-                        .short("a")
-                        .long("account")
-                        .help("Splits with the given account id")
-                        .required(false)
                         .takes_value(true),
                 ).arg(
                     Arg::with_name("txid")
@@ -87,7 +80,7 @@ fn main() {
                         .required(false)
                         .takes_value(true),
                 ),
-        ).subcommand(AccountQuery::add_arguments(
+        )).subcommand(AccountQuery::add_arguments(
             SubCommand::with_name("correlate")
                 .arg(
                     Arg::with_name("file")
@@ -109,7 +102,7 @@ fn main() {
 
     match matches.subcommand() {
         ("list-accounts", Some(cmd)) => handle_list_accounts(cmd),
-        ("splits", Some(cmd)) => handle_list_entries(cmd),
+        ("transactions", Some(cmd)) => handle_list_entries(cmd),
         ("correlate", Some(cmd)) => handle_correlate(cmd),
         _ => (),
     }
@@ -121,10 +114,14 @@ fn handle_list_accounts(ls_acc_cmd: &ArgMatches) {
     q.execute_and_display(&connection);
 }
 
-fn handle_list_entries(entries_cmd: &ArgMatches) {
+fn handle_list_entries(cmd: &ArgMatches) {
     let connection = establish_connection();
-    let q = TransactionQuery::from(entries_cmd);
-    q.execute_and_display(&connection);
+    let account_query = AccountQuery::from(cmd);
+    if let Some(account) = account_query.get_one(&connection) {
+        println!("Listing transactions in {}", &account.name);
+        let q = TransactionQuery::from(cmd).with_account_id(account.guid);
+        q.execute_and_display(&connection);
+    }
 }
 
 fn handle_correlate(cmd: &ArgMatches) {

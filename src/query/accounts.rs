@@ -82,7 +82,7 @@ impl AccountQuery {
                 .takes_value(true),
         ).arg(
             Arg::with_name("type")
-                .short("t")
+                .short("y")
                 .long("account-type")
                 .help("Limit to specified account types")
                 .required(false)

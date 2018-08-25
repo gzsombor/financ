@@ -16,6 +16,18 @@ pub struct TransactionQuery {
 }
 
 impl TransactionQuery {
+    pub fn with_account_id(self, account_id: String) -> Self {
+        TransactionQuery {
+            limit: self.limit,
+            txid_filter: self.txid_filter,
+            account_filter: Some(account_id),
+            description_filter: self.description_filter,
+            memo_filter: self.memo_filter,
+            before_filter: self.before_filter,
+            after_filter: self.after_filter,
+        }
+    }
+
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<(Split, Transaction)> {
         use schema::splits::dsl::*;
         use schema::transactions::dsl::*;
@@ -74,7 +86,7 @@ impl<'a> From<&'a ArgMatches<'a>> for TransactionQuery {
     fn from(entries_cmd: &ArgMatches) -> Self {
         let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
         let txid_filter = value_t!(entries_cmd, "txid", String).ok();
-        let account_filter = value_t!(entries_cmd, "account", String).ok();
+        let account_filter = None;
         let description_filter = value_t!(entries_cmd, "description", String).ok();
         let memo_filter = value_t!(entries_cmd, "memo", String).ok();
         let before_filter = to_date(value_t!(entries_cmd, "before", String).ok());
