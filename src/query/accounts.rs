@@ -62,28 +62,28 @@ impl AccountQuery {
         app.arg(
             Arg::with_name("name")
                 .short("n")
-                .long("name")
+                .long("account-name")
                 .help("Limit to accounts which name contains the specified string")
                 .required(false)
                 .takes_value(true),
         ).arg(
             Arg::with_name("parent_guid")
                 .short("p")
-                .long("parent")
+                .long("account-parent")
                 .help("Filter to the childs accounts of the given account")
                 .required(false)
                 .takes_value(true),
         ).arg(
             Arg::with_name("guid")
                 .short("g")
-                .long("guid")
+                .long("account-guid")
                 .help("Filter by guid")
                 .required(false)
                 .takes_value(true),
         ).arg(
             Arg::with_name("type")
                 .short("t")
-                .long("type")
+                .long("account-type")
                 .help("Limit to specified account types")
                 .required(false)
                 .takes_value(true),
