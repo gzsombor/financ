@@ -67,12 +67,13 @@ impl TransactionQuery {
         println!("Displaying {} splits", results.len());
         for (split, tx) in results {
             println!(
-                "[{}]<{}> - @{} - '{}' - {} - {}({}) {}({})",
+                "[{}]<{}> - @{} - '{}' - {}:{} - {}({}) {}({})",
                 split.account_guid,
                 split.tx_guid,
                 tx.post_date.unwrap_or_else(|| "".to_string()),
                 tx.description.unwrap_or_else(|| "".to_string()),
                 split.memo,
+                split.action,
                 split.value_num,
                 split.value_denom,
                 split.quantity_num,

@@ -1,4 +1,4 @@
-use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
+use clap::{App, Arg, ArgMatches};
 use diesel::prelude::*;
 
 use models::Account;
