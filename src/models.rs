@@ -1,4 +1,4 @@
-use chrono::{NaiveDate, NaiveDateTime};
+use chrono::NaiveDateTime;
 use schema::{accounts, splits, transactions};
 
 joinable!(splits -> transactions (tx_guid));

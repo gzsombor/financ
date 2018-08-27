@@ -14,3 +14,7 @@ pub fn establish_connection() -> SqliteConnection {
 pub fn to_date(date_string: Option<String>) -> Option<NaiveDate> {
     date_string.and_then(|x| NaiveDate::parse_from_str(x.as_ref(), "%Y-%m-%d").ok())
 }
+
+pub fn to_string(date: Option<NaiveDate>) -> String {
+    date.map_or_else(|| "".to_string(), |dt| dt.format("%Y-%m-%d").to_string())
+}

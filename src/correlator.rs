@@ -9,6 +9,7 @@ use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::{Duration, NaiveDate};
 use diesel::prelude::*;
 use models::{Split, Transaction};
+use utils::to_string;
 
 pub struct SheetDefinition {
     input_file: String,
@@ -24,6 +25,13 @@ pub struct ExternalTransaction {
     description: Option<String>,
     other_account: Option<String>,
 }
+
+#[derive(Debug)]
+pub struct ExternalTransactionList(
+    Vec<ExternalTransaction>,
+    Option<NaiveDate>,
+    Option<NaiveDate>,
+);
 
 impl fmt::Display for ExternalTransaction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -45,6 +53,12 @@ impl fmt::Display for ExternalTransaction {
     }
 }
 
+impl ExternalTransaction {
+    pub fn get_matching_date(&self) -> Option<NaiveDate> {
+        self.date
+    }
+}
+
 // [derive(Debug)]
 struct TransactionPairing {
     transaction: Transaction,
@@ -54,7 +68,7 @@ struct TransactionPairing {
 
 pub struct TransactionCorrelator {
     sheet_definition: SheetDefinition,
-    external_transactions: Vec<ExternalTransaction>,
+    external_transactions: ExternalTransactionList,
     account: String,
     transaction_map: BTreeMap<NaiveDate, Vec<TransactionPairing>>,
 }
@@ -94,9 +108,9 @@ impl TransactionPairing {
         self.external.borrow().is_none()
     }
 
-    fn pair_with(&self, external_trans: ExternalTransaction) {
+    fn pair_with(&self, external_trans: &ExternalTransaction) {
         let mut inner = self.external.borrow_mut();
-        *inner = Some(external_trans);
+        *inner = Some(external_trans.to_owned());
     }
 }
 
@@ -109,60 +123,86 @@ impl SheetDefinition {
         }
     }
 
-    pub fn load(&mut self, sheet_name: &str) -> Vec<ExternalTransaction> {
+    pub fn load(&mut self, sheet_name: &str) -> ExternalTransactionList {
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
             println!("found sheet '{}'", &sheet_name);
-            parse_sheet(&sheet)
+            let trans = SheetDefinition::parse_sheet(&sheet);
+            let (min, max) = SheetDefinition::find_min_max(&trans);
+            ExternalTransactionList(trans, min, max)
         } else {
-            Vec::new()
+            ExternalTransactionList(Vec::new(), None, None)
         }
     }
-}
 
-fn cell_to_date(cell: DataType) -> Option<NaiveDate> {
-    if let DataType::String(str) = cell {
-        NaiveDate::parse_from_str(str.as_ref(), "%Y.%m.%d.").ok()
-    } else {
-        None
+    fn cell_to_date(cell: DataType) -> Option<NaiveDate> {
+        if let DataType::String(str) = cell {
+            NaiveDate::parse_from_str(str.as_ref(), "%Y.%m.%d.").ok()
+        } else {
+            None
+        }
     }
-}
 
-fn cell_to_string(cell: DataType) -> Option<String> {
-    if let DataType::String(str) = cell {
-        Some(str)
-    } else {
-        None
+    fn cell_to_string(cell: DataType) -> Option<String> {
+        if let DataType::String(str) = cell {
+            Some(str)
+        } else {
+            None
+        }
     }
-}
 
-fn cell_to_float(cell: DataType) -> Option<f64> {
-    if let DataType::Float(flt) = cell {
-        Some(flt)
-    } else {
-        None
+    fn cell_to_float(cell: DataType) -> Option<f64> {
+        if let DataType::Float(flt) = cell {
+            Some(flt)
+        } else {
+            None
+        }
     }
-}
 
-fn parse_sheet(range: &Range<DataType>) -> Vec<ExternalTransaction> {
-    println!(
-        "Range starts : {:?} ends at {:?}",
-        range.start(),
-        range.end()
-    );
-    range
-        .rows()
-        .filter(|row| row[0] != DataType::Empty)
-        .map(|row| {
-            // println!("row is {:?}", row);
-            ExternalTransaction {
-                date: cell_to_date(row[2].clone()),
-                booking_date: cell_to_date(row[3].clone()),
-                amount: cell_to_float(row[4].clone()),
-                category: cell_to_string(row[1].clone()),
-                description: cell_to_string(row[8].clone()),
-                other_account: cell_to_string(row[6].clone()),
-            }
-        }).collect()
+    fn parse_sheet(range: &Range<DataType>) -> Vec<ExternalTransaction> {
+        println!(
+            "Range starts : {:?} ends at {:?}",
+            range.start(),
+            range.end()
+        );
+        range
+            .rows()
+            .filter(|row| row[0] != DataType::Empty)
+            .map(|row| {
+                // println!("row is {:?}", row);
+                ExternalTransaction {
+                    date: SheetDefinition::cell_to_date(row[2].clone()),
+                    booking_date: SheetDefinition::cell_to_date(row[3].clone()),
+                    amount: SheetDefinition::cell_to_float(row[4].clone()),
+                    category: SheetDefinition::cell_to_string(row[1].clone()),
+                    description: SheetDefinition::cell_to_string(row[8].clone()),
+                    other_account: SheetDefinition::cell_to_string(row[6].clone()),
+                }
+            }).collect()
+    }
+
+    fn find_min_max(
+        transactions: &Vec<ExternalTransaction>,
+    ) -> (Option<NaiveDate>, Option<NaiveDate>) {
+        transactions
+            .into_iter()
+            .fold((None, None), |(min, max), current| {
+                let maybe_current_date = current.get_matching_date();
+                match maybe_current_date {
+                    Some(current_date) => {
+                        let new_min = match min {
+                            None => Some(current_date),
+                            Some(y) => Some(if current_date < y { current_date } else { y }),
+                        };
+                        let new_max = match max {
+                            None => Some(current_date),
+                            Some(y) => Some(if current_date > y { current_date } else { y }),
+                        };
+                        (new_min, new_max)
+                    }
+                    None => (min, max),
+                }
+            })
+    }
 }
 
 impl TransactionCorrelator {
@@ -192,6 +232,49 @@ impl TransactionCorrelator {
         println!("loaded {} transactions from the database", db_rows.len());
         db_rows
     }
+    /*
+	fn check_min_date(&self, date: &NaiveDate) {
+		let mut min_inner = self.min_date.borrow_mut();
+		if let Some(prev_min) = *min_inner {
+			if date < &prev_min {
+				*min_inner = Some(date.to_owned());
+			}
+		} else {
+			*min_inner = Some(date.to_owned());
+		}
+	}
+
+	fn check_max_date(&self, date: &NaiveDate) {
+		let mut max_inner = self.max_date.borrow_mut();
+		if let Some(prev_max) = *max_inner {
+			if date > &prev_max {
+				*max_inner = Some(date.to_owned());
+			}
+		} else {
+			*max_inner = Some(date.to_owned());
+		}
+	}
+
+	fn check_dates(&self, date: &NaiveDate) {
+		self.check_min_date(date);
+		self.check_max_date(date);
+	}
+	
+	fn get_min_date(&self) -> Option<NaiveDate> {
+		self.min_date.borrow().to_owned()
+	}
+
+	fn get_max_date(&self) -> Option<NaiveDate> {
+		self.max_date.borrow().to_owned()
+	}*/
+
+    fn get_min_date(&self) -> Option<NaiveDate> {
+        self.external_transactions.1.to_owned()
+    }
+
+    fn get_max_date(&self) -> Option<NaiveDate> {
+        self.external_transactions.2.to_owned()
+    }
 
     fn build_mapping(&mut self, connection: &SqliteConnection) {
         let db_transactions = self.load_from_database(&connection);
@@ -209,7 +292,7 @@ impl TransactionCorrelator {
     }
 
     pub fn match_transactions(&mut self) -> Vec<ExternalTransaction> {
-        let mut working_set = self.external_transactions.clone();
+        let mut working_set = self.external_transactions.0.clone();
         println!("Starting with {} transactions", &working_set.len());
         working_set = self.match_transactions_with_delta_day(0, &working_set);
         println!(
@@ -239,7 +322,7 @@ impl TransactionCorrelator {
         let mut result = Vec::new();
         for external_transaction in transactions {
             if self
-                .add_transaction(delta_day, external_transaction.clone())
+                .add_transaction(delta_day, &external_transaction)
                 .is_none()
             {
                 result.push(external_transaction.clone());
@@ -251,9 +334,9 @@ impl TransactionCorrelator {
     fn add_transaction(
         &self,
         delta_day: i64,
-        external_transaction: ExternalTransaction,
+        external_transaction: &ExternalTransaction,
     ) -> Option<&TransactionPairing> {
-        if let Some(ext_date) = external_transaction.date {
+        if let Some(ext_date) = external_transaction.get_matching_date() {
             let actual_date = match delta_day {
                 0 => ext_date,
                 _ => ext_date
@@ -289,6 +372,11 @@ pub fn correlate(
         for tr in &unmatched_transactions {
             println!(" - {}", &tr);
         }
+        println!(
+            " Between {} and {}",
+            to_string(correlator.get_min_date()),
+            to_string(correlator.get_max_date())
+        );
         Some(unmatched_transactions.len())
     } else {
         None
