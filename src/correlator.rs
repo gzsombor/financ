@@ -232,41 +232,6 @@ impl TransactionCorrelator {
         println!("loaded {} transactions from the database", db_rows.len());
         db_rows
     }
-    /*
-	fn check_min_date(&self, date: &NaiveDate) {
-		let mut min_inner = self.min_date.borrow_mut();
-		if let Some(prev_min) = *min_inner {
-			if date < &prev_min {
-				*min_inner = Some(date.to_owned());
-			}
-		} else {
-			*min_inner = Some(date.to_owned());
-		}
-	}
-
-	fn check_max_date(&self, date: &NaiveDate) {
-		let mut max_inner = self.max_date.borrow_mut();
-		if let Some(prev_max) = *max_inner {
-			if date > &prev_max {
-				*max_inner = Some(date.to_owned());
-			}
-		} else {
-			*max_inner = Some(date.to_owned());
-		}
-	}
-
-	fn check_dates(&self, date: &NaiveDate) {
-		self.check_min_date(date);
-		self.check_max_date(date);
-	}
-	
-	fn get_min_date(&self) -> Option<NaiveDate> {
-		self.min_date.borrow().to_owned()
-	}
-
-	fn get_max_date(&self) -> Option<NaiveDate> {
-		self.max_date.borrow().to_owned()
-	}*/
 
     fn get_min_date(&self) -> Option<NaiveDate> {
         self.external_transactions.1.to_owned()
@@ -368,15 +333,15 @@ pub fn correlate(
     if let Some(only_account) = account_query.get_one(&connection) {
         let mut correlator = TransactionCorrelator::new(input_file, sheet_name, only_account.guid);
         correlator.build_mapping(connection);
+        println!(
+            "Between {} and {}",
+            to_string(correlator.get_min_date()),
+            to_string(correlator.get_max_date())
+        );
         let unmatched_transactions = correlator.match_transactions();
         for tr in &unmatched_transactions {
             println!(" - {}", &tr);
         }
-        println!(
-            " Between {} and {}",
-            to_string(correlator.get_min_date()),
-            to_string(correlator.get_max_date())
-        );
         Some(unmatched_transactions.len())
     } else {
         None

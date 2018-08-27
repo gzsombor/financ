@@ -80,6 +80,7 @@ fn parse_date(value: &Option<String>) -> Option<NaiveDateTime> {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use chrono::NaiveDate;
 
     #[test]
     fn test_parse_none() {
