@@ -1,6 +1,7 @@
 use std::cell::RefCell;
 use std::collections::BTreeMap;
 use std::fmt;
+use std::ops::Bound::Included;
 
 use query::accounts::AccountQuery;
 use query::transactions::TransactionQuery;
@@ -73,25 +74,6 @@ pub struct TransactionCorrelator {
     transaction_map: BTreeMap<NaiveDate, Vec<TransactionPairing>>,
 }
 
-/*struct TransactionList {
-    transactions: Vec<ExternalTransaction>,
-    start_date: NaiveDate,
-    end_date: NaiveDate,
-}
-*/
-/*
-impl ExternalTransaction {
-	pub fn new(date: NaiveDate,	amount: i64, description: String) -> Self {
-		ExternalTransaction {
-			date:date,
-			amount:amount,
-			description:description,
-			other_account:None,
-		}
-	}
-}
-*/
-
 impl TransactionPairing {
     pub fn new(pair: (Split, Transaction)) -> Self {
         TransactionPairing {
@@ -111,6 +93,12 @@ impl TransactionPairing {
     fn pair_with(&self, external_trans: &ExternalTransaction) {
         let mut inner = self.external.borrow_mut();
         *inner = Some(external_trans.to_owned());
+    }
+}
+
+impl fmt::Display for TransactionPairing {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "{} - {}", self.transaction, self.split)
     }
 }
 
@@ -256,6 +244,27 @@ impl TransactionCorrelator {
         println!("found {} separate date", self.transaction_map.len());
     }
 
+    fn get_unmatched(&self) -> Vec<&TransactionPairing> {
+        let min = self.get_min_date();
+        let max = self.get_max_date();
+        if let Some(max_value) = max {
+            if let Some(min_value) = min {
+                return self
+                    .transaction_map
+                    .range((Included(min_value), Included(max_value)))
+                    .map(|(_, v)| v)
+                    .flatten()
+                    .filter(|pairing| pairing.is_not_matched())
+                    .collect();
+            }
+        }
+        self.transaction_map
+            .values()
+            .flatten()
+            .filter(|pairing| pairing.is_not_matched())
+            .collect()
+    }
+
     pub fn match_transactions(&mut self) -> Vec<ExternalTransaction> {
         let mut working_set = self.external_transactions.0.clone();
         println!("Starting with {} transactions", &working_set.len());
@@ -340,6 +349,11 @@ pub fn correlate(
         );
         let unmatched_transactions = correlator.match_transactions();
         for tr in &unmatched_transactions {
+            println!(" - {}", &tr);
+        }
+        let db_transactions = correlator.get_unmatched();
+        println!("Missing from external table:");
+        for tr in &db_transactions {
             println!(" - {}", &tr);
         }
         Some(unmatched_transactions.len())

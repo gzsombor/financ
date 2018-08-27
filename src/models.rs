@@ -1,5 +1,6 @@
 use chrono::NaiveDateTime;
 use schema::{accounts, splits, transactions};
+use std::fmt;
 
 joinable!(splits -> transactions (tx_guid));
 joinable!(splits -> accounts (account_guid));
@@ -62,12 +63,41 @@ impl Split {
     }
 }
 
+impl fmt::Display for Split {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}:{} - {}({}) {}({})",
+            self.memo,
+            self.action,
+            self.value_num,
+            self.value_denom,
+            self.quantity_num,
+            self.quantity_denom
+        )
+    }
+}
+
 impl Transaction {
     pub fn posting(&self) -> Option<NaiveDateTime> {
         parse_date(&self.post_date)
     }
     pub fn entering(&self) -> Option<NaiveDateTime> {
         parse_date(&self.enter_date)
+    }
+}
+
+impl fmt::Display for Transaction {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        if let Some(ref pd) = self.post_date {
+            f.write_str(&pd)?;
+        } else {
+            f.write_str("--------")?;
+        }
+        if let Some(ref desc) = self.description {
+            write!(f, " - {}", desc)?;
+        }
+        Ok(())
     }
 }
 
