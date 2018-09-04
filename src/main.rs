@@ -6,6 +6,9 @@ extern crate dotenv;
 extern crate clap;
 extern crate calamine;
 extern crate chrono;
+extern crate regex;
+#[macro_use]
+extern crate lazy_static;
 
 pub mod correlator;
 pub mod models;

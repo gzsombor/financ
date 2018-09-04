@@ -3,14 +3,15 @@ use std::collections::BTreeMap;
 use std::fmt;
 use std::ops::Bound::Included;
 
-use query::accounts::AccountQuery;
-use query::transactions::TransactionQuery;
-
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::{Duration, NaiveDate};
 use diesel::prelude::*;
+use regex::Regex;
+
 use models::{Split, Transaction};
-use utils::to_string;
+use query::accounts::AccountQuery;
+use query::transactions::TransactionQuery;
+use utils::{extract_date, to_string};
 
 pub struct SheetDefinition {
     input_file: String,
@@ -25,6 +26,7 @@ pub struct ExternalTransaction {
     category: Option<String>,
     description: Option<String>,
     other_account: Option<String>,
+    textual_date: Option<NaiveDate>,
 }
 
 #[derive(Debug)]
@@ -56,7 +58,7 @@ impl fmt::Display for ExternalTransaction {
 
 impl ExternalTransaction {
     pub fn get_matching_date(&self) -> Option<NaiveDate> {
-        self.date
+        self.textual_date.or(self.date)
     }
 }
 
@@ -152,18 +154,22 @@ impl SheetDefinition {
             range.start(),
             range.end()
         );
+
         range
             .rows()
             .filter(|row| row[0] != DataType::Empty)
             .map(|row| {
                 // println!("row is {:?}", row);
+                let descrip = SheetDefinition::cell_to_string(&row[8]);
+                let parsed_date = extract_date(descrip.clone());
                 ExternalTransaction {
                     date: SheetDefinition::cell_to_date(&row[2]),
                     booking_date: SheetDefinition::cell_to_date(&row[3]),
                     amount: SheetDefinition::cell_to_float(&row[4]),
                     category: SheetDefinition::cell_to_string(&row[1]),
-                    description: SheetDefinition::cell_to_string(&row[8]),
+                    description: descrip,
                     other_account: SheetDefinition::cell_to_string(&row[6]),
+                    textual_date: parsed_date,
                 }
             }).collect()
     }
