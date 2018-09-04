@@ -122,25 +122,25 @@ impl SheetDefinition {
         }
     }
 
-    fn cell_to_date(cell: DataType) -> Option<NaiveDate> {
+    fn cell_to_date(cell: &DataType) -> Option<NaiveDate> {
         if let DataType::String(str) = cell {
-            NaiveDate::parse_from_str(str.as_ref(), "%Y.%m.%d.").ok()
+            NaiveDate::parse_from_str(str, "%Y.%m.%d.").ok()
         } else {
             None
         }
     }
 
-    fn cell_to_string(cell: DataType) -> Option<String> {
+    fn cell_to_string(cell: &DataType) -> Option<String> {
         if let DataType::String(str) = cell {
-            Some(str)
+            Some(str.clone())
         } else {
             None
         }
     }
 
-    fn cell_to_float(cell: DataType) -> Option<f64> {
+    fn cell_to_float(cell: &DataType) -> Option<f64> {
         if let DataType::Float(flt) = cell {
-            Some(flt)
+            Some(flt.clone())
         } else {
             None
         }
@@ -158,12 +158,12 @@ impl SheetDefinition {
             .map(|row| {
                 // println!("row is {:?}", row);
                 ExternalTransaction {
-                    date: SheetDefinition::cell_to_date(row[2].clone()),
-                    booking_date: SheetDefinition::cell_to_date(row[3].clone()),
-                    amount: SheetDefinition::cell_to_float(row[4].clone()),
-                    category: SheetDefinition::cell_to_string(row[1].clone()),
-                    description: SheetDefinition::cell_to_string(row[8].clone()),
-                    other_account: SheetDefinition::cell_to_string(row[6].clone()),
+                    date: SheetDefinition::cell_to_date(&row[2]),
+                    booking_date: SheetDefinition::cell_to_date(&row[3]),
+                    amount: SheetDefinition::cell_to_float(&row[4]),
+                    category: SheetDefinition::cell_to_string(&row[1]),
+                    description: SheetDefinition::cell_to_string(&row[8]),
+                    other_account: SheetDefinition::cell_to_string(&row[6]),
                 }
             }).collect()
     }
