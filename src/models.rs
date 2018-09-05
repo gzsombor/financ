@@ -89,8 +89,8 @@ impl Transaction {
 
 impl fmt::Display for Transaction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(ref pd) = self.post_date {
-            f.write_str(&pd)?;
+        if let Some(parsed_date) = parse_date(&self.post_date) {
+            f.write_str(&parsed_date.format("%Y-%m-%d").to_string())?;
         } else {
             f.write_str("--------")?;
         }

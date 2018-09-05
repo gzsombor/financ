@@ -30,7 +30,6 @@ pub fn extract_date(string: Option<String>) -> Option<NaiveDate> {
         let month = caps.get(2).unwrap().as_str();
         let day = caps.get(3).unwrap().as_str();
 
-        println!("Found {} - {} - {}", year, month, day);
         Some(NaiveDate::from_ymd(
             year.parse().expect("Number as year"),
             month.parse().expect("Number as month"),

@@ -43,6 +43,11 @@ impl fmt::Display for ExternalTransaction {
         } else {
             f.write_str("----------")?;
         }
+        if let Some(other_date) = self.textual_date {
+            f.write_str(&other_date.format(" %Y-%m-%d").to_string())?;
+        } else {
+            f.write_str(" ----------")?;
+        }
         if let Some(amount) = self.amount {
             write!(f, " {}", amount);
         }
