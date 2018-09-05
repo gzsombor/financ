@@ -59,7 +59,7 @@ impl Split {
             "is_equal_amount {:?} {:?} ?= {}",
             self.value_num, self.value_denom, amount
         );*/
-        (amount * (self.value_denom as f64)) as i64 == self.value_num
+        (amount * (self.quantity_denom as f64)) as i64 == self.quantity_num
     }
 }
 
