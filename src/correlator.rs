@@ -167,6 +167,7 @@ impl SheetDefinition {
                 // println!("row is {:?}", row);
                 let descrip = SheetDefinition::cell_to_string(&row[8]);
                 let parsed_date = extract_date(descrip.clone());
+                // println!("{:?} - {:?} - {:?}", &row[0],&row[5], &row[8]);
                 ExternalTransaction {
                     date: SheetDefinition::cell_to_date(&row[2]),
                     booking_date: SheetDefinition::cell_to_date(&row[3]),
