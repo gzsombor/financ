@@ -61,9 +61,18 @@ impl fmt::Display for ExternalTransaction {
     }
 }
 
+pub enum Matching {
+    ByBooking,
+    BySpending,
+}
+
 impl ExternalTransaction {
-    pub fn get_matching_date(&self) -> Option<NaiveDate> {
-        self.textual_date.or(self.date)
+    // TODO: make it configurable
+    pub fn get_matching_date(&self, matching: &Matching) -> Option<NaiveDate> {
+        match matching {
+            Matching::ByBooking => self.date,
+            Matching::BySpending => self.textual_date.or(self.date),
+        }
     }
 }
 
@@ -75,9 +84,9 @@ struct TransactionPairing {
 }
 
 pub struct TransactionCorrelator {
-    sheet_definition: SheetDefinition,
     external_transactions: ExternalTransactionList,
     account: String,
+    matching: Matching,
     transaction_map: BTreeMap<NaiveDate, Vec<TransactionPairing>>,
 }
 
@@ -118,11 +127,11 @@ impl SheetDefinition {
         }
     }
 
-    pub fn load(&mut self, sheet_name: &str) -> ExternalTransactionList {
+    pub fn load(&mut self, sheet_name: &str, matching: &Matching) -> ExternalTransactionList {
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
             println!("found sheet '{}'", &sheet_name);
             let trans = SheetDefinition::parse_sheet(&sheet);
-            let (min, max) = SheetDefinition::find_min_max(&trans);
+            let (min, max) = SheetDefinition::find_min_max(&trans, &matching);
             ExternalTransactionList(trans, min, max)
         } else {
             ExternalTransactionList(Vec::new(), None, None)
@@ -182,11 +191,12 @@ impl SheetDefinition {
 
     fn find_min_max(
         transactions: &Vec<ExternalTransaction>,
+        matching: &Matching,
     ) -> (Option<NaiveDate>, Option<NaiveDate>) {
         transactions
             .into_iter()
             .fold((None, None), |(min, max), current| {
-                let maybe_current_date = current.get_matching_date();
+                let maybe_current_date = current.get_matching_date(&matching);
                 match maybe_current_date {
                     Some(current_date) => {
                         let new_min = match min {
@@ -206,14 +216,19 @@ impl SheetDefinition {
 }
 
 impl TransactionCorrelator {
-    pub fn new(input_file: String, sheet_name: String, account: String) -> Self {
+    pub fn new(
+        input_file: String,
+        sheet_name: String,
+        account: String,
+        matching: Matching,
+    ) -> Self {
         let mut sheet_definition = SheetDefinition::new(input_file);
 
-        let external_transactions = sheet_definition.load(&sheet_name);
+        let external_transactions = sheet_definition.load(&sheet_name, &matching);
         TransactionCorrelator {
-            sheet_definition,
             external_transactions,
             account,
+            matching,
             transaction_map: BTreeMap::new(),
         }
     }
@@ -322,7 +337,7 @@ impl TransactionCorrelator {
         delta_day: i64,
         external_transaction: &ExternalTransaction,
     ) -> Option<&TransactionPairing> {
-        if let Some(ext_date) = external_transaction.get_matching_date() {
+        if let Some(ext_date) = external_transaction.get_matching_date(&self.matching) {
             let actual_date = match delta_day {
                 0 => ext_date,
                 _ => ext_date
@@ -349,10 +364,12 @@ pub fn correlate(
     connection: &SqliteConnection,
     input_file: String,
     sheet_name: String,
+    matching: Matching,
     account_query: AccountQuery,
 ) -> Option<usize> {
     if let Some(only_account) = account_query.get_one(&connection) {
-        let mut correlator = TransactionCorrelator::new(input_file, sheet_name, only_account.guid);
+        let mut correlator =
+            TransactionCorrelator::new(input_file, sheet_name, only_account.guid, matching);
         correlator.build_mapping(connection);
         println!(
             "Between {} and {}",

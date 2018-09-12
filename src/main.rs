@@ -17,7 +17,7 @@ pub mod schema;
 pub mod utils;
 
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
-use correlator::correlate;
+use correlator::{correlate, Matching};
 use query::accounts::AccountQuery;
 use query::transactions::TransactionQuery;
 use utils::establish_connection;
@@ -99,6 +99,13 @@ fn main() {
                         .help("The name of the sheet")
                         .required(true)
                         .takes_value(true),
+                ).arg(
+                    Arg::with_name("by_booking_date")
+                        .short("d")
+                        .long("by-booking-date")
+                        .help("Match transactions by the booking date")
+                        .required(false)
+                        .takes_value(false),
                 ),
         )).setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
@@ -133,7 +140,12 @@ fn handle_correlate(cmd: &ArgMatches) {
     let account = AccountQuery::from(cmd);
 
     let connection = establish_connection();
-    correlate(&connection, input_file, sheet_name, account);
+    let matching = match cmd.is_present("by_booking_date") {
+        true => Matching::ByBooking,
+        _ => Matching::BySpending,
+    };
+
+    correlate(&connection, input_file, sheet_name, matching, account);
 }
 
 fn is_a_number(v: String) -> Result<(), String> {
