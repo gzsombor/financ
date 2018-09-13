@@ -19,6 +19,7 @@ pub mod utils;
 use clap::{App, AppSettings, Arg, ArgMatches, SubCommand};
 use correlator::{correlate, Matching};
 use query::accounts::AccountQuery;
+use query::currencies::CommoditiesQuery;
 use query::transactions::TransactionQuery;
 use utils::establish_connection;
 
@@ -107,14 +108,40 @@ fn main() {
                         .required(false)
                         .takes_value(false),
                 ),
-        )).setting(AppSettings::ArgRequiredElseHelp)
+        )).subcommand(
+            SubCommand::with_name("commodities")
+                .arg(
+                    Arg::with_name("limit")
+                        .short("l")
+                        .long("limit")
+                        .help("Limit number of splits")
+                        .required(false)
+                        .validator(is_a_number)
+                        .takes_value(true),
+                ).arg(
+                    Arg::with_name("type")
+                        .short("t")
+                        .long("type")
+                        .help("List only a given type of commodities")
+                        .required(false)
+                        .takes_value(true),
+                ).arg(
+                    Arg::with_name("name")
+                        .short("n")
+                        .long("name")
+                        .help("List only commodities with the given name")
+                        .required(false)
+                        .takes_value(true),
+                ),
+        ).setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
     match matches.subcommand() {
         ("list-accounts", Some(cmd)) => handle_list_accounts(cmd),
         ("transactions", Some(cmd)) => handle_list_entries(cmd),
         ("correlate", Some(cmd)) => handle_correlate(cmd),
-        _ => (),
+        ("commodities", Some(cmd)) => handle_list_currencies(cmd),
+        (cmd, _) => println!("Unknown command: {}", cmd),
     }
 }
 
@@ -132,6 +159,12 @@ fn handle_list_entries(cmd: &ArgMatches) {
         let q = TransactionQuery::from(cmd).with_account_id(account.guid);
         q.execute_and_display(&connection);
     }
+}
+
+fn handle_list_currencies(cmd: &ArgMatches) {
+    let connection = establish_connection();
+    let q = CommoditiesQuery::from(cmd);
+    q.execute_and_display(&connection);
 }
 
 fn handle_correlate(cmd: &ArgMatches) {

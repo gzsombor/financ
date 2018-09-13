@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use schema::{accounts, splits, transactions};
+use schema::{accounts, commodities, splits, transactions};
 use std::fmt;
 
 joinable!(splits -> transactions (tx_guid));
@@ -45,6 +45,19 @@ pub struct Transaction {
     pub post_date: Option<String>,
     pub enter_date: Option<String>,
     pub description: Option<String>,
+}
+
+#[derive(Queryable, Debug)]
+pub struct Commodities {
+    pub guid: String,
+    pub namespace: String,
+    pub mnemonic: String,
+    pub fullname: Option<String>,
+    pub cusip: Option<String>,
+    pub fraction: i32,
+    pub quote_flag: i32,
+    pub quote_source: Option<String>,
+    pub quote_tz: Option<String>,
 }
 
 impl Account {
@@ -98,6 +111,15 @@ impl fmt::Display for Transaction {
             write!(f, " - {}", desc)?;
         }
         Ok(())
+    }
+}
+
+impl Commodities {
+    pub fn display(&self) {
+        println!(
+            "[{}]<{}> - {} (fraction:{})",
+            self.namespace, self.guid, self.mnemonic, self.fraction
+        );
     }
 }
 
