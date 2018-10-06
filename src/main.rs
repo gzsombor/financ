@@ -108,8 +108,7 @@ fn main() {
                         .required(false)
                         .takes_value(false),
                 ),
-        )).subcommand(
-            SubCommand::with_name("commodities")
+        )).subcommand(SubCommand::with_name("commodities")
                 .arg(
                     Arg::with_name("limit")
                         .short("l")
@@ -132,7 +131,7 @@ fn main() {
                         .help("List only commodities with the given name")
                         .required(false)
                         .takes_value(true),
-                ),
+                )
         ).setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
@@ -141,7 +140,7 @@ fn main() {
         ("transactions", Some(cmd)) => handle_list_entries(cmd),
         ("correlate", Some(cmd)) => handle_correlate(cmd),
         ("commodities", Some(cmd)) => handle_list_currencies(cmd),
-        (cmd, _) => println!("Unknown command: {}", cmd),
+        (cmd,_)  => println!("Unknown command: {}", cmd),
     }
 }
 

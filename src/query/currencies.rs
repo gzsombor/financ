@@ -1,3 +1,5 @@
+use std::collections::BTreeMap;
+
 use clap::ArgMatches;
 use diesel::prelude::*;
 
@@ -25,6 +27,15 @@ impl CommoditiesQuery {
             .limit(self.limit)
             .load::<Commodities>(connection)
             .expect("Error loading commodities")
+    }
+
+    pub fn to_map(&self, connection: &SqliteConnection) -> BTreeMap<String, Commodities> {
+        let mut commodity_map = BTreeMap::new();
+        let results = self.execute(&connection);
+        for commodity in results {
+            commodity_map.insert(commodity.guid.clone(), commodity);
+        }
+        commodity_map
     }
 
     pub fn execute_and_display(&self, connection: &SqliteConnection) {
