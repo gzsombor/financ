@@ -38,7 +38,8 @@ fn main() {
                     .validator(is_a_number)
                     .takes_value(true),
             ),
-        )).subcommand(AccountQuery::add_arguments(
+        ))
+        .subcommand(AccountQuery::add_arguments(
             SubCommand::with_name("transactions")
                 .arg(
                     Arg::with_name("limit")
@@ -48,35 +49,40 @@ fn main() {
                         .required(false)
                         .validator(is_a_number)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("txid")
                         .short("t")
                         .long("txid")
                         .help("Splits with the given transaction id ")
                         .required(false)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("before")
                         .short("b")
                         .long("before")
                         .help("Splits before the given date in yyyy-mm-dd format")
                         .required(false)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("after")
                         .short("f")
                         .long("after")
                         .help("Splits after the given date in yyyy-mm-dd format")
                         .required(false)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("memo")
                         .short("m")
                         .long("memo")
                         .help("Splits with the given memo")
                         .required(false)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("description")
                         .short("d")
                         .long("description")
@@ -84,7 +90,8 @@ fn main() {
                         .required(false)
                         .takes_value(true),
                 ),
-        )).subcommand(AccountQuery::add_arguments(
+        ))
+        .subcommand(AccountQuery::add_arguments(
             SubCommand::with_name("correlate")
                 .arg(
                     Arg::with_name("file")
@@ -93,14 +100,16 @@ fn main() {
                         .help("The file which contains a list of transaction to correlate")
                         .required(true)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("sheet_name")
                         .short("s")
                         .long("sheet-name")
                         .help("The name of the sheet")
                         .required(true)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("by_booking_date")
                         .short("d")
                         .long("by-booking-date")
@@ -108,7 +117,9 @@ fn main() {
                         .required(false)
                         .takes_value(false),
                 ),
-        )).subcommand(SubCommand::with_name("commodities")
+        ))
+        .subcommand(
+            SubCommand::with_name("commodities")
                 .arg(
                     Arg::with_name("limit")
                         .short("l")
@@ -117,22 +128,25 @@ fn main() {
                         .required(false)
                         .validator(is_a_number)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("type")
                         .short("t")
                         .long("type")
                         .help("List only a given type of commodities")
                         .required(false)
                         .takes_value(true),
-                ).arg(
+                )
+                .arg(
                     Arg::with_name("name")
                         .short("n")
                         .long("name")
                         .help("List only commodities with the given name")
                         .required(false)
                         .takes_value(true),
-                )
-        ).setting(AppSettings::ArgRequiredElseHelp)
+                ),
+        )
+        .setting(AppSettings::ArgRequiredElseHelp)
         .get_matches();
 
     match matches.subcommand() {
@@ -140,7 +154,7 @@ fn main() {
         ("transactions", Some(cmd)) => handle_list_entries(cmd),
         ("correlate", Some(cmd)) => handle_correlate(cmd),
         ("commodities", Some(cmd)) => handle_list_currencies(cmd),
-        (cmd,_)  => println!("Unknown command: {}", cmd),
+        (cmd, _) => println!("Unknown command: {}", cmd),
     }
 }
 

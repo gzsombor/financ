@@ -185,7 +185,8 @@ impl SheetDefinition {
                     other_account: SheetDefinition::cell_to_string(&row[6]),
                     textual_date: parsed_date,
                 }
-            }).collect()
+            })
+            .collect()
     }
 
     fn find_min_max(
