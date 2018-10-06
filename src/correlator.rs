@@ -6,20 +6,19 @@ use std::ops::Bound::Included;
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::{Duration, NaiveDate};
 use diesel::prelude::*;
-use regex::Regex;
 
 use models::{Split, Transaction};
 use query::accounts::AccountQuery;
 use query::transactions::TransactionQuery;
 use utils::{extract_date, to_string};
 
-pub struct SheetDefinition {
+struct SheetDefinition {
     input_file: String,
     workbook: Sheets,
 }
 
 #[derive(Debug, Clone)]
-pub struct ExternalTransaction {
+struct ExternalTransaction {
     date: Option<NaiveDate>,
     booking_date: Option<NaiveDate>,
     amount: Option<f64>,
@@ -30,7 +29,7 @@ pub struct ExternalTransaction {
 }
 
 #[derive(Debug)]
-pub struct ExternalTransactionList(
+struct ExternalTransactionList(
     Vec<ExternalTransaction>,
     Option<NaiveDate>,
     Option<NaiveDate>,
@@ -83,7 +82,7 @@ struct TransactionPairing {
     external: RefCell<Option<ExternalTransaction>>,
 }
 
-pub struct TransactionCorrelator {
+struct TransactionCorrelator {
     external_transactions: ExternalTransactionList,
     account: String,
     matching: Matching,
