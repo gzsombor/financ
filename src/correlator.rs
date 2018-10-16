@@ -12,6 +12,14 @@ use query::accounts::AccountQuery;
 use query::transactions::TransactionQuery;
 use utils::{extract_date, to_string};
 
+pub struct CorrelationCommand {
+    input_file: String,
+    sheet_name: String,
+    matching: Matching,
+    account_query: AccountQuery,
+    counterparty_account: Option<AccountQuery>,
+}
+
 struct SheetDefinition {
     input_file: String,
     workbook: Sheets,

@@ -51,7 +51,7 @@ impl<'a> From<&'a ArgMatches<'a>> for CommoditiesQuery {
     fn from(ls_acc_cmd: &ArgMatches) -> Self {
         let limit = value_t!(ls_acc_cmd, "limit", i64).unwrap_or(10);
         let name_filter = value_t!(ls_acc_cmd, "name", String).ok();
-        let type_filter = value_t!(ls_acc_cmd, "type", String).ok();
+        let type_filter = value_t!(ls_acc_cmd, "commodity-type", String).ok();
         CommoditiesQuery {
             limit,
             name_filter,
