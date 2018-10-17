@@ -7,8 +7,8 @@ use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::{Duration, NaiveDate};
 use diesel::prelude::*;
 
-use models::{Split, Transaction};
-use query::accounts::AccountQuery;
+use models::{Account, Split, Transaction};
+use query::accounts::{AccountQuery};
 use query::transactions::TransactionQuery;
 use utils::{extract_date, to_string};
 
@@ -252,7 +252,7 @@ impl TransactionCorrelator {
             after_filter: None,
         };
         let db_rows = db_query.execute(&connection);
-        println!("loaded {} transactions from the database", db_rows.len());
+        println!("Number of transactions in the database: {}", db_rows.len());
         db_rows
     }
 
@@ -276,7 +276,7 @@ impl TransactionCorrelator {
                 list.push(TransactionPairing::new(row));
             }
         }
-        println!("found {} separate date", self.transaction_map.len());
+        println!("Found {} separate date", self.transaction_map.len());
     }
 
     fn get_unmatched(&self) -> Vec<&TransactionPairing> {
@@ -374,10 +374,11 @@ pub fn correlate(
     sheet_name: String,
     matching: Matching,
     account_query: AccountQuery,
+    counter_account_query: AccountQuery,
 ) -> Option<usize> {
     if let Some(only_account) = account_query.get_one(&connection) {
         let mut correlator =
-            TransactionCorrelator::new(input_file, sheet_name, only_account.guid, matching);
+            TransactionCorrelator::new(input_file, sheet_name, only_account.guid.clone(), matching);
         correlator.build_mapping(connection);
         println!(
             "Between {} and {}",
@@ -385,16 +386,30 @@ pub fn correlate(
             to_string(correlator.get_max_date())
         );
         let unmatched_transactions = correlator.match_transactions();
+        println!("Missing from the internal database:");
         for tr in &unmatched_transactions {
             println!(" - {}", &tr);
         }
         let db_transactions = correlator.get_unmatched();
-        println!("Missing from external table:");
+        println!("Missing from external source:");
         for tr in &db_transactions {
             println!(" - {}", &tr);
+        }
+        if unmatched_transactions.len() > 0 {
+            if let Some(counter_account) = counter_account_query.get_one(&connection) {
+                try_to_fix(&unmatched_transactions, &only_account, &counter_account);
+            } else {
+                println!("Unable to fix, as counter account is not specified exactly!");
+            }
+        } else {
+            println!("No unmatched transac");
         }
         Some(unmatched_transactions.len())
     } else {
         None
     }
+}
+
+fn try_to_fix(unmatched_transactions: &Vec<ExternalTransaction>, only_account: &Account, counter_account: &Account) {
+    println!("Creating transactions between {} and {}", counter_account, only_account);
 }

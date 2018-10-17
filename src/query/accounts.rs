@@ -144,7 +144,7 @@ impl AccountQueryCli {
         let limit = if let Some(limit) = limit_param {
             value_t!(ls_acc_cmd, limit, i64).unwrap_or(10)
         } else {
-            1
+            10
         };
         let name_filter = value_t!(ls_acc_cmd, self.name, String).ok();
         let guid_filter = value_t!(ls_acc_cmd, self.guid, String).ok();

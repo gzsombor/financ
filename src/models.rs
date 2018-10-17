@@ -66,6 +66,17 @@ impl Account {
     }
 }
 
+impl fmt::Display for Account {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(
+            f,
+            "{}({})",
+            self.name,
+            self.guid
+        )
+    }
+}
+
 impl Split {
     pub fn is_equal_amount(&self, amount: f64) -> bool {
         /*        println!(

@@ -197,6 +197,7 @@ fn handle_correlate(cmd: &ArgMatches) {
     let input_file = value_t!(cmd, "file", String).unwrap();
     let sheet_name = value_t!(cmd, "sheet_name", String).unwrap();
     let account = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
+    let counter_account = FROM_ACCOUNT_PARAMS.build(&cmd, None);
 
     let connection = establish_connection();
     let matching = match cmd.is_present("by_booking_date") {
@@ -204,7 +205,7 @@ fn handle_correlate(cmd: &ArgMatches) {
         _ => Matching::BySpending,
     };
 
-    correlate(&connection, input_file, sheet_name, matching, account);
+    correlate(&connection, input_file, sheet_name, matching, account, counter_account);
 }
 
 fn handle_completions(cmd: &ArgMatches) {
