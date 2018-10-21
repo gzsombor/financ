@@ -99,6 +99,7 @@ struct TransactionCorrelator {
     account: String,
     matching: Matching,
     transaction_map: BTreeMap<NaiveDate, Vec<TransactionPairing>>,
+    verbose: bool,
 }
 
 impl TransactionPairing {
@@ -233,6 +234,7 @@ impl TransactionCorrelator {
         sheet_name: String,
         account: String,
         matching: Matching,
+        verbose: bool,
     ) -> Self {
         let mut sheet_definition = SheetDefinition::new(input_file);
 
@@ -242,6 +244,7 @@ impl TransactionCorrelator {
             account,
             matching,
             transaction_map: BTreeMap::new(),
+            verbose,
         }
     }
 
@@ -256,7 +259,9 @@ impl TransactionCorrelator {
             after_filter: None,
         };
         let db_rows = db_query.execute(&connection);
-        println!("Number of transactions in the database: {}", db_rows.len());
+        if self.verbose {
+            println!("Number of transactions in the database: {}", db_rows.len());
+        }
         db_rows
     }
 
@@ -280,7 +285,9 @@ impl TransactionCorrelator {
                 list.push(TransactionPairing::new(row));
             }
         }
-        println!("Found {} separate date", self.transaction_map.len());
+        if self.verbose {
+            println!("Found {} separate date", self.transaction_map.len());
+        }
     }
 
     fn get_unmatched(&self) -> Vec<&TransactionPairing> {
@@ -306,22 +313,28 @@ impl TransactionCorrelator {
 
     pub fn match_transactions(&mut self) -> Vec<ExternalTransaction> {
         let mut working_set = self.external_transactions.0.clone();
-        println!("Starting with {} transactions", &working_set.len());
+        if self.verbose {
+            println!("Starting with {} transactions", &working_set.len());
+        }
         working_set = self.match_transactions_with_delta_day(0, &working_set);
-        println!(
-            "After matching with 0, {} transaction remained as unmatched",
-            &working_set.len()
-        );
+        if self.verbose {
+            println!(
+                "After matching with 0, {} transaction remained as unmatched",
+                &working_set.len()
+            );
+        }
         let mut delta_day = 0;
         while !&working_set.is_empty() && delta_day < 10 {
             delta_day = delta_day + 1;
             working_set = self.match_transactions_with_delta_day(delta_day, &working_set);
             working_set = self.match_transactions_with_delta_day(-delta_day, &working_set);
-            println!(
-                "After matching with {}, {} transaction remained as unmatched",
-                &delta_day,
-                &working_set.len()
-            );
+            if self.verbose {
+                println!(
+                    "After matching with {}, {} transaction remained as unmatched",
+                    &delta_day,
+                    &working_set.len()
+                );
+            }
         }
         working_set
     }
@@ -380,6 +393,7 @@ impl CorrelationCommand {
                 self.sheet_name.clone(),
                 only_account.guid.clone(),
                 self.matching,
+                self.verbose,
             );
             correlator.build_mapping(connection);
 
@@ -393,20 +407,24 @@ impl CorrelationCommand {
             term.write_line(&format!(
                 "Missing {} record from the internal database:",
                 style(&unmatched_transactions.len()).red()
-            ));
+            ))?;
 
-            for tr in &unmatched_transactions {
-                println!(" - {}", &tr);
+            if self.verbose {
+                for tr in &unmatched_transactions {
+                    println!(" - {}", &tr);
+                }
             }
 
             let db_transactions = correlator.get_unmatched();
             term.write_line(&format!(
                 "Missing {} record from the external source:",
                 style(&db_transactions.len()).red()
-            ));
+            ))?;
 
-            for tr in &db_transactions {
-                println!(" - {}", &tr);
+            if self.verbose {
+                for tr in &db_transactions {
+                    println!(" - {}", &tr);
+                }
             }
 
             if unmatched_transactions.len() > 0 {
