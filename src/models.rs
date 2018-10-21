@@ -68,12 +68,7 @@ impl Account {
 
 impl fmt::Display for Account {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(
-            f,
-            "{}({})",
-            self.name,
-            self.guid
-        )
+        write!(f, "{}({})", self.name, self.guid)
     }
 }
 

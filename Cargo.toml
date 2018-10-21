@@ -13,6 +13,7 @@ chrono = "0.4.6"
 calamine = "0.14.6"
 regex = "1"
 lazy_static = "1.1.0"
+console = "0.6.2"
 
 #[patch.crates-io]
 #calamine = { path = "../calamine" }

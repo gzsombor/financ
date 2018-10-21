@@ -6,6 +6,7 @@ extern crate dotenv;
 extern crate clap;
 extern crate calamine;
 extern crate chrono;
+extern crate console;
 extern crate regex;
 #[macro_use]
 extern crate lazy_static;
@@ -17,7 +18,8 @@ pub mod schema;
 pub mod utils;
 
 use clap::{App, AppSettings, Arg, ArgMatches, Shell, SubCommand};
-use correlator::{correlate, Matching};
+use console::Term;
+use correlator::{CorrelationCommand, Matching};
 use query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS};
 use query::currencies::CommoditiesQuery;
 use query::transactions::TransactionQuery;
@@ -135,6 +137,14 @@ fn build_cli() -> App<'static, 'static> {
                                 .help("Match transactions by the booking date")
                                 .required(false)
                                 .takes_value(false),
+                        )
+                        .arg(
+                            Arg::with_name("verbose")
+                                .short("v")
+                                .long("verbose")
+                                .help("Verbose logging")
+                                .required(false)
+                                .takes_value(false),
                         ),
                 ),
             ),
@@ -196,8 +206,9 @@ fn handle_list_currencies(cmd: &ArgMatches) {
 fn handle_correlate(cmd: &ArgMatches) {
     let input_file = value_t!(cmd, "file", String).unwrap();
     let sheet_name = value_t!(cmd, "sheet_name", String).unwrap();
-    let account = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
-    let counter_account = FROM_ACCOUNT_PARAMS.build(&cmd, None);
+    let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
+    let counterparty_account_query = FROM_ACCOUNT_PARAMS.build(&cmd, None);
+    let verbose = cmd.is_present("verbose");
 
     let connection = establish_connection();
     let matching = match cmd.is_present("by_booking_date") {
@@ -205,7 +216,16 @@ fn handle_correlate(cmd: &ArgMatches) {
         _ => Matching::BySpending,
     };
 
-    correlate(&connection, input_file, sheet_name, matching, account, counter_account);
+    let term = Term::stdout();
+    let cmd = CorrelationCommand {
+        input_file: input_file,
+        sheet_name: sheet_name,
+        matching: matching,
+        verbose: verbose,
+        account_query: account_query,
+        counterparty_account_query: counterparty_account_query,
+    };
+    cmd.execute(&connection, &term);
 }
 
 fn handle_completions(cmd: &ArgMatches) {
