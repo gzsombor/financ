@@ -6,7 +6,7 @@ use std::ops::Bound::Included;
 
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::{Duration, NaiveDate};
-use console::{style, Term};
+use console::{style, Key, Term};
 use diesel::prelude::*;
 
 use models::{Account, Split, Transaction};
@@ -385,6 +385,13 @@ impl TransactionCorrelator {
     }
 }
 
+#[derive(Debug)]
+enum Answer {
+    Yes,
+    No,
+    Abort,
+}
+
 impl CorrelationCommand {
     pub fn execute(&self, connection: &SqliteConnection, term: &Term) -> io::Result<usize> {
         if let Some(only_account) = self.account_query.get_one(&connection) {
@@ -454,10 +461,59 @@ impl CorrelationCommand {
         only_account: &Account,
         counter_account: &Account,
         term: &Term,
-    ) {
+    ) -> io::Result<()> {
         term.write_line(&format!(
             "Creating transactions between {} and {}",
             counter_account, only_account
-        ));
+        ))?;
+        for transaction in unmatched_transactions {
+            term.write_line(&format!(
+                "Adding {} [{}es/{}o/{}bort]",
+                style(&transaction).cyan(),
+                style("Y").red(),
+                style("N").red(),
+                style("A").red()
+            ))?;
+            let answer = Answer::get(&term)?;
+            match answer {
+                Answer::Yes => {
+                    self.add_transaction(&transaction, &only_account, &counter_account, &term)?
+                }
+                Answer::No => {
+                    term.write_line(&format!("Skipping {}", style(&transaction).magenta()))?
+                }
+                Answer::Abort => return Ok(()),
+            };
+        }
+        Ok(())
+    }
+
+    fn add_transaction(
+        &self,
+        transaction: &ExternalTransaction,
+        only_account: &Account,
+        counter_account: &Account,
+        term: &Term,
+    ) -> io::Result<()> {
+        term.write_line(&format!("adding {}", style(&transaction).red()))
+    }
+}
+
+impl Answer {
+    fn get(term: &Term) -> io::Result<Answer> {
+        loop {
+            let key = term.read_key()?;
+            match key {
+                Key::Char('y') => return Ok(Answer::Yes),
+                Key::Char('Y') => return Ok(Answer::Yes),
+                Key::Enter => return Ok(Answer::Yes),
+                Key::Char('n') => return Ok(Answer::No),
+                Key::Char('N') => return Ok(Answer::No),
+                Key::Escape => return Ok(Answer::Abort),
+                Key::Char('a') => return Ok(Answer::Abort),
+                Key::Char('A') => return Ok(Answer::Abort),
+                _ => {}
+            }
+        }
     }
 }
