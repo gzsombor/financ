@@ -62,7 +62,7 @@ pub struct Commodities {
 
 impl Account {
     pub fn display(&self) {
-        let commodity = self.commodity_guid.clone().unwrap_or("".to_owned());
+        let commodity = self.commodity_guid.clone().unwrap_or_else(|| "".to_owned());
         println!(
             "[{}]<{}>({}) - {}",
             self.account_type, self.guid, commodity, self.name
@@ -78,10 +78,6 @@ impl fmt::Display for Account {
 
 impl Split {
     pub fn is_equal_amount(&self, amount: f64) -> bool {
-        /*        println!(
-            "is_equal_amount {:?} {:?} ?= {}",
-            self.value_num, self.value_denom, amount
-        );*/
         (amount * (self.quantity_denom as f64)) as i64 == self.quantity_num
     }
 }

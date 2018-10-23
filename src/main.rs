@@ -19,6 +19,8 @@ mod query;
 pub mod schema;
 pub mod utils;
 
+use std::io;
+
 use clap::{App, AppSettings, Arg, ArgMatches, Shell, SubCommand};
 use console::Term;
 use correlator::{CorrelationCommand, Matching};
@@ -213,9 +215,10 @@ fn handle_correlate(cmd: &ArgMatches) {
     let verbose = cmd.is_present("verbose");
 
     let connection = establish_connection();
-    let matching = match cmd.is_present("by_booking_date") {
-        true => Matching::ByBooking,
-        _ => Matching::BySpending,
+    let matching = if cmd.is_present("by_booking_date") {
+        Matching::ByBooking
+    } else {
+        Matching::BySpending
     };
 
     let term = Term::stdout();
@@ -227,7 +230,7 @@ fn handle_correlate(cmd: &ArgMatches) {
         account_query: account_query,
         counterparty_account_query: counterparty_account_query,
     };
-    cmd.execute(&connection, &term);
+    cmd.execute(&connection, &term).unwrap();
 }
 
 fn handle_completions(cmd: &ArgMatches) {

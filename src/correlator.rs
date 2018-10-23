@@ -458,7 +458,7 @@ impl CorrelationCommand {
 
     fn try_to_fix(
         &self,
-        unmatched_transactions: &Vec<ExternalTransaction>,
+        unmatched_transactions: &[ExternalTransaction],
         only_account: &Account,
         counter_account: &Account,
         term: &Term,
