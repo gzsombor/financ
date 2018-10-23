@@ -1,4 +1,5 @@
 #![recursion_limit = "128"]
+#![allow(proc_macro_derive_resolution_fallback)]
 #[macro_use]
 extern crate diesel;
 extern crate dotenv;

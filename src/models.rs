@@ -1,5 +1,5 @@
 use chrono::NaiveDateTime;
-use schema::{accounts, commodities, splits, transactions};
+use schema::{accounts, splits, transactions};
 use std::fmt;
 
 joinable!(splits -> transactions (tx_guid));
