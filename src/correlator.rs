@@ -7,6 +7,7 @@ use std::ops::Bound::Included;
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::{Duration, NaiveDate};
 use console::{style, Key, Term};
+use guid_create::GUID;
 use diesel::prelude::*;
 
 use models::{Account, Split, Transaction};
@@ -462,6 +463,10 @@ impl CorrelationCommand {
         counter_account: &Account,
         term: &Term,
     ) -> io::Result<()> {
+        if only_account.commodity_guid != counter_account.commodity_guid {
+            term.write_line(&format!("The two account has different commodities, unable to transfer between: {} - {}", style(only_account).red(), style(counter_account).red() ))?;
+            return Err(io::Error::new(io::ErrorKind::Other, "Different commodities!"));
+        }
         term.write_line(&format!(
             "Creating transactions between {} and {}",
             counter_account, only_account
@@ -495,7 +500,9 @@ impl CorrelationCommand {
         counter_account: &Account,
         term: &Term,
     ) -> io::Result<()> {
-        term.write_line(&format!("adding {}", style(&transaction).red()))
+        term.write_line(&format!("adding {}", style(&transaction).red()))?;
+        
+        Ok(())
     }
 }
 
