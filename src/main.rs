@@ -19,8 +19,6 @@ mod query;
 pub mod schema;
 pub mod utils;
 
-use std::io;
-
 use clap::{App, AppSettings, Arg, ArgMatches, Shell, SubCommand};
 use console::Term;
 use correlator::{CorrelationCommand, Matching};
@@ -223,12 +221,12 @@ fn handle_correlate(cmd: &ArgMatches) {
 
     let term = Term::stdout();
     let cmd = CorrelationCommand {
-        input_file: input_file,
-        sheet_name: sheet_name,
-        matching: matching,
-        verbose: verbose,
-        account_query: account_query,
-        counterparty_account_query: counterparty_account_query,
+        input_file,
+        sheet_name,
+        matching,
+        verbose,
+        account_query,
+        counterparty_account_query,
     };
     cmd.execute(&connection, &term).unwrap();
 }

@@ -25,7 +25,7 @@ pub struct CorrelationCommand {
 }
 
 struct SheetDefinition {
-    input_file: String,
+    //    input_file: String,
     workbook: Sheets,
 }
 
@@ -80,7 +80,7 @@ pub enum Matching {
 
 impl ExternalTransaction {
     // TODO: make it configurable
-    pub fn get_matching_date(&self, matching: &Matching) -> Option<NaiveDate> {
+    pub fn get_matching_date(&self, matching: Matching) -> Option<NaiveDate> {
         match matching {
             Matching::ByBooking => self.date,
             Matching::BySpending => self.textual_date.or(self.date),
@@ -132,19 +132,19 @@ impl fmt::Display for TransactionPairing {
 }
 
 impl SheetDefinition {
-    pub fn new(input_file: String) -> Self {
+    pub fn new(input_file: &str) -> Self {
         let workbook = open_workbook_auto(&input_file).expect("Cannot open file");
         SheetDefinition {
-            input_file,
+            // input_file,
             workbook,
         }
     }
 
-    pub fn load(&mut self, sheet_name: &str, matching: &Matching) -> ExternalTransactionList {
+    pub fn load(&mut self, sheet_name: &str, matching: Matching) -> ExternalTransactionList {
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
             println!("found sheet '{}'", &sheet_name);
             let trans = SheetDefinition::parse_sheet(&sheet);
-            let (min, max) = SheetDefinition::find_min_max(&trans, &matching);
+            let (min, max) = SheetDefinition::find_min_max(&trans, matching);
             ExternalTransactionList(trans, min, max)
         } else {
             ExternalTransactionList(Vec::new(), None, None)
@@ -169,7 +169,7 @@ impl SheetDefinition {
 
     fn cell_to_float(cell: &DataType) -> Option<f64> {
         if let DataType::Float(flt) = cell {
-            Some(flt.clone())
+            Some(*flt)
         } else {
             None
         }
@@ -186,10 +186,8 @@ impl SheetDefinition {
             .rows()
             .filter(|row| row[0] != DataType::Empty)
             .map(|row| {
-                // println!("row is {:?}", row);
                 let descrip = SheetDefinition::cell_to_string(&row[8]);
                 let parsed_date = extract_date(descrip.clone());
-                // println!("{:?} - {:?} - {:?}", &row[0],&row[5], &row[8]);
                 ExternalTransaction {
                     date: SheetDefinition::cell_to_date(&row[2]),
                     booking_date: SheetDefinition::cell_to_date(&row[3]),
@@ -204,13 +202,13 @@ impl SheetDefinition {
     }
 
     fn find_min_max(
-        transactions: &Vec<ExternalTransaction>,
-        matching: &Matching,
+        transactions: &[ExternalTransaction],
+        matching: Matching,
     ) -> (Option<NaiveDate>, Option<NaiveDate>) {
         transactions
             .into_iter()
             .fold((None, None), |(min, max), current| {
-                let maybe_current_date = current.get_matching_date(&matching);
+                let maybe_current_date = current.get_matching_date(matching);
                 match maybe_current_date {
                     Some(current_date) => {
                         let new_min = match min {
@@ -231,15 +229,15 @@ impl SheetDefinition {
 
 impl TransactionCorrelator {
     pub fn new(
-        input_file: String,
-        sheet_name: String,
+        input_file: &str,
+        sheet_name: &str,
         account: String,
         matching: Matching,
         verbose: bool,
     ) -> Self {
         let mut sheet_definition = SheetDefinition::new(input_file);
 
-        let external_transactions = sheet_definition.load(&sheet_name, &matching);
+        let external_transactions = sheet_definition.load(&sheet_name, matching);
         TransactionCorrelator {
             external_transactions,
             account,
@@ -326,7 +324,7 @@ impl TransactionCorrelator {
         }
         let mut delta_day = 0;
         while !&working_set.is_empty() && delta_day < 10 {
-            delta_day = delta_day + 1;
+            delta_day += 1;
             working_set = self.match_transactions_with_delta_day(delta_day, &working_set);
             working_set = self.match_transactions_with_delta_day(-delta_day, &working_set);
             if self.verbose {
@@ -344,7 +342,7 @@ impl TransactionCorrelator {
     pub fn match_transactions_with_delta_day(
         &self,
         delta_day: i64,
-        transactions: &Vec<ExternalTransaction>,
+        transactions: &[ExternalTransaction],
     ) -> Vec<ExternalTransaction> {
         let mut result = Vec::new();
         for external_transaction in transactions {
@@ -363,7 +361,7 @@ impl TransactionCorrelator {
         delta_day: i64,
         external_transaction: &ExternalTransaction,
     ) -> Option<&TransactionPairing> {
-        if let Some(ext_date) = external_transaction.get_matching_date(&self.matching) {
+        if let Some(ext_date) = external_transaction.get_matching_date(self.matching) {
             let actual_date = match delta_day {
                 0 => ext_date,
                 _ => ext_date
@@ -382,7 +380,7 @@ impl TransactionCorrelator {
                 }
             }
         }
-        return None;
+        None
     }
 }
 
@@ -397,8 +395,8 @@ impl CorrelationCommand {
     pub fn execute(&self, connection: &SqliteConnection, term: &Term) -> io::Result<usize> {
         if let Some(only_account) = self.account_query.get_one(&connection) {
             let mut correlator = TransactionCorrelator::new(
-                self.input_file.clone(),
-                self.sheet_name.clone(),
+                &self.input_file.clone(),
+                &self.sheet_name.clone(),
                 only_account.guid.clone(),
                 self.matching,
                 self.verbose,
@@ -435,7 +433,7 @@ impl CorrelationCommand {
                 }
             }
 
-            if unmatched_transactions.len() > 0 {
+            if !unmatched_transactions.is_empty() {
                 if let Some(counter_account) = self.counterparty_account_query.get_one(&connection)
                 {
                     self.try_to_fix(
@@ -443,7 +441,7 @@ impl CorrelationCommand {
                         &only_account,
                         &counter_account,
                         &term,
-                    );
+                    )?;
                 } else {
                     println!("Unable to fix, as counter account is not specified exactly!");
                 }
