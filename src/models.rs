@@ -62,7 +62,11 @@ pub struct Commodities {
 
 impl Account {
     pub fn display(&self) {
-        println!("[{}]<{}> - {}", self.account_type, self.guid, self.name);
+        let commodity = self.commodity_guid.clone().unwrap_or("".to_owned());
+        println!(
+            "[{}]<{}>({}) - {}",
+            self.account_type, self.guid, commodity, self.name
+        );
     }
 }
 

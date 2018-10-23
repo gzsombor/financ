@@ -8,8 +8,8 @@ extern crate clap;
 extern crate calamine;
 extern crate chrono;
 extern crate console;
-extern crate regex;
 extern crate guid_create;
+extern crate regex;
 #[macro_use]
 extern crate lazy_static;
 
