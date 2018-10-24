@@ -77,6 +77,32 @@ impl fmt::Display for Account {
 }
 
 impl Split {
+    pub fn new_simple(
+        guid: String,
+        tx_guid: String,
+        account_guid: String,
+        memo: Option<String>,
+        value_num: i64,
+        value_denom: i64,
+        quantity_num: i64,
+        quantity_denom: i64,
+    ) -> Self {
+        Split {
+            guid,
+            tx_guid,
+            account_guid,
+            memo: memo.unwrap_or_else(|| "".to_owned()),
+            action: "".to_owned(),
+            reconcile_state: "n".to_owned(),
+            reconcile_date: None,
+            value_num,
+            value_denom,
+            quantity_num,
+            quantity_denom,
+            lot_guid: None,
+        }
+    }
+
     pub fn is_equal_amount(&self, amount: f64) -> bool {
         (amount * (self.quantity_denom as f64)) as i64 == self.quantity_num
     }
