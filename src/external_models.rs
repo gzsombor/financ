@@ -61,11 +61,11 @@ impl ExternalTransaction {
     pub fn get_description_or_category(&self) -> Option<String> {
         self.description.clone().or_else(|| self.category.clone())
     }
-
-    pub fn get_description(&self) -> Option<String> {
-        self.description.clone()
-    }
-
+    /*
+        pub fn get_description(&self) -> Option<String> {
+            self.description.clone()
+        }
+    */
     pub fn get_amount(&self) -> Option<f64> {
         self.amount
     }
