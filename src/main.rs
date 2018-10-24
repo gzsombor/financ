@@ -14,6 +14,7 @@ extern crate regex;
 extern crate lazy_static;
 
 pub mod correlator;
+mod external_models;
 pub mod models;
 mod query;
 pub mod schema;
@@ -21,7 +22,8 @@ pub mod utils;
 
 use clap::{App, AppSettings, Arg, ArgMatches, Shell, SubCommand};
 use console::Term;
-use correlator::{CorrelationCommand, Matching};
+use correlator::CorrelationCommand;
+use external_models::Matching;
 use query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS};
 use query::currencies::CommoditiesQuery;
 use query::transactions::TransactionQuery;
