@@ -11,7 +11,7 @@ use utils::extract_date;
 pub struct ExternalTransaction {
     date: Option<NaiveDate>,
     booking_date: Option<NaiveDate>,
-    pub amount: Option<f64>,
+    amount: Option<f64>,
     category: Option<String>,
     description: Option<String>,
     other_account: Option<String>,
@@ -58,8 +58,16 @@ impl ExternalTransaction {
         }
     }
 
+    pub fn get_description_or_category(&self) -> Option<String> {
+        self.description.clone().or_else(|| self.category.clone())
+    }
+
     pub fn get_description(&self) -> Option<String> {
         self.description.clone()
+    }
+
+    pub fn get_amount(&self) -> Option<f64> {
+        self.amount
     }
 }
 

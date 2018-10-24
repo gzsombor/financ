@@ -174,7 +174,7 @@ impl TransactionCorrelator {
                     .checked_add_signed(Duration::days(delta_day))
                     .unwrap(),
             };
-            if let Some(ext_amount) = external_transaction.amount {
+            if let Some(ext_amount) = external_transaction.get_amount() {
                 if let Some(list) = self.transaction_map.get(&actual_date) {
                     if let Some(tr_pairing) = list
                         .iter()
@@ -333,7 +333,7 @@ impl CorrelationCommand {
             commodity.guid,
             spend_date.map(|d| d.and_hms(12, 0, 0)),
             Some(current_time),
-            transaction.get_description(),
+            transaction.get_description_or_category(),
         );
         term.write_line(&format!("trans obj {:?}", tr))?;
         Ok(())
