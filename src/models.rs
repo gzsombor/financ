@@ -98,6 +98,23 @@ impl fmt::Display for Split {
 }
 
 impl Transaction {
+    pub fn new(
+        guid: String,
+        currency_guid: String,
+        post_date: Option<NaiveDateTime>,
+        enter_date: Option<NaiveDateTime>,
+        description: Option<String>,
+    ) -> Self {
+        Transaction {
+            guid,
+            currency_guid,
+            num: "".to_owned(),
+            post_date: post_date.as_ref().map(format_date),
+            enter_date: enter_date.as_ref().map(format_date),
+            description,
+        }
+    }
+
     pub fn posting(&self) -> Option<NaiveDateTime> {
         parse_date(&self.post_date)
     }
@@ -135,6 +152,10 @@ fn parse_date(value: &Option<String>) -> Option<NaiveDateTime> {
         .and_then(|date_str| NaiveDateTime::parse_from_str(date_str.as_ref(), "%Y%m%d%H%M%S").ok())
 }
 
+fn format_date(ndt: &NaiveDateTime) -> String {
+    ndt.format("%Y%m%d%H%M%S").to_string()
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -153,4 +174,18 @@ mod tests {
         );
     }
 
+    #[test]
+    fn test_format_date() {
+        assert_eq!(
+            format_date(&NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13)),
+            "20161020203213"
+        );
+    }
+
+    #[test]
+    fn test_format_and_parse_date() {
+        let nd = NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13);
+        let as_str = format_date(&nd);
+        assert_eq!(parse_date(&Some(as_str)), Some(nd));
+    }
 }

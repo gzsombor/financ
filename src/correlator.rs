@@ -5,13 +5,14 @@ use std::io;
 use std::ops::Bound::Included;
 
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
-use chrono::{Duration, NaiveDate};
+use chrono::{Duration, Local, NaiveDate};
 use console::{style, Key, Term};
 use diesel::prelude::*;
 use guid_create::GUID;
 
 use models::{Account, Split, Transaction};
 use query::accounts::AccountQuery;
+use query::currencies::CommoditiesQuery;
 use query::transactions::TransactionQuery;
 use utils::{extract_date, to_string};
 
@@ -85,6 +86,10 @@ impl ExternalTransaction {
             Matching::ByBooking => self.date,
             Matching::BySpending => self.textual_date.or(self.date),
         }
+    }
+
+    pub fn get_description(&self) -> Option<String> {
+        self.description.clone()
     }
 }
 
@@ -437,6 +442,7 @@ impl CorrelationCommand {
                 if let Some(counter_account) = self.counterparty_account_query.get_one(&connection)
                 {
                     self.try_to_fix(
+                        &connection,
                         &unmatched_transactions,
                         &only_account,
                         &counter_account,
@@ -456,6 +462,7 @@ impl CorrelationCommand {
 
     fn try_to_fix(
         &self,
+        connection: &SqliteConnection,
         unmatched_transactions: &[ExternalTransaction],
         only_account: &Account,
         counter_account: &Account,
@@ -486,9 +493,13 @@ impl CorrelationCommand {
             ))?;
             let answer = Answer::get(&term)?;
             match answer {
-                Answer::Yes => {
-                    self.add_transaction(&transaction, &only_account, &counter_account, &term)?
-                }
+                Answer::Yes => self.add_transaction(
+                    &connection,
+                    &transaction,
+                    &only_account,
+                    &counter_account,
+                    &term,
+                )?,
                 Answer::No => {
                     term.write_line(&format!("Skipping {}", style(&transaction).magenta()))?
                 }
@@ -500,13 +511,30 @@ impl CorrelationCommand {
 
     fn add_transaction(
         &self,
+        connection: &SqliteConnection,
         transaction: &ExternalTransaction,
         only_account: &Account,
         counter_account: &Account,
         term: &Term,
     ) -> io::Result<()> {
         term.write_line(&format!("adding {}", style(&transaction).red()))?;
-
+        let commodity_guid = &only_account
+            .commodity_guid
+            .clone()
+            .expect("Commodity guid is not null");
+        let commodity = CommoditiesQuery::get_by_guid(&connection, &commodity_guid)
+            .expect("Currency not found!");
+        let tr_guid = GUID::rand();
+        let spend_date = transaction.get_matching_date(Matching::BySpending);
+        let current_time = Local::now().naive_local();
+        let tr = Transaction::new(
+            tr_guid.to_string(),
+            commodity.guid,
+            spend_date.map(|d| d.and_hms(12, 0, 0)),
+            Some(current_time),
+            transaction.get_description(),
+        );
+        term.write_line(&format!("trans obj {:?}", tr))?;
         Ok(())
     }
 }

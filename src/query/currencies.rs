@@ -45,6 +45,17 @@ impl CommoditiesQuery {
             commodity.display();
         }
     }
+
+    pub fn get_by_guid(connection: &SqliteConnection, id: &str) -> Option<Commodities> {
+        use schema::commodities::dsl::*;
+
+        commodities
+            .filter(guid.eq(id))
+            .limit(1)
+            .load::<Commodities>(connection)
+            .expect("Error loading a commodity")
+            .pop()
+    }
 }
 
 impl<'a> From<&'a ArgMatches<'a>> for CommoditiesQuery {
