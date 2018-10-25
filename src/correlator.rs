@@ -331,40 +331,29 @@ impl CorrelationCommand {
         let description = transaction.get_description_or_category();
         let tr = Transaction::new(
             tr_guid.to_string(),
-            commodity.guid,
+            commodity.guid.clone(),
             spend_date.map(|d| d.and_hms(12, 0, 0)),
             Some(current_time),
             description.clone(),
         );
-        let fraction = f64::from(commodity.fraction);
-        let big_fraction = i64::from(commodity.fraction);
         let amount = transaction.get_amount().expect("Amount is expected!");
-        let value = ((fraction * amount).round()) as i64;
-        let account_qty = (f64::from(only_account.commodity_scu) * amount) as i64;
-        let counter_qty = (f64::from(counter_account.commodity_scu) * amount) as i64;
-        let split_account = Split::new_simple(
-            GUID::rand().to_string(),
+        let split_account = Split::create(
             tr_guid.to_string(),
-            only_account.guid.clone(),
+            &only_account,
             description,
-            value,
-            big_fraction,
-            account_qty,
-            i64::from(only_account.commodity_scu),
+            &commodity,
+            amount,
         );
-        let split_counter = Split::new_simple(
-            GUID::rand().to_string(),
+        let split_counter = Split::create(
             tr_guid.to_string(),
-            counter_account.guid.clone(),
+            &counter_account,
             None,
-            -value,
-            big_fraction,
-            -counter_qty,
-            i64::from(counter_account.commodity_scu),
+            &commodity,
+            -amount,
         );
         term.write_line(&format!(
-            "trans obj {:?} \n\t{:?}\n\t{:?}",
-            tr, split_account, split_counter
+            "trans obj {:?} \n\t{} - {:?}\n\t{} - {:?}",
+            tr, only_account.name, split_account, counter_account.name, split_counter
         ))?;
         Ok(())
     }

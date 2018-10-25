@@ -1,6 +1,8 @@
-use chrono::NaiveDateTime;
-use schema::{accounts, splits, transactions};
 use std::fmt;
+
+use chrono::NaiveDateTime;
+use guid_create::GUID;
+use schema::{accounts, splits, transactions};
 
 joinable!(splits -> transactions (tx_guid));
 joinable!(splits -> accounts (account_guid));
@@ -77,7 +79,7 @@ impl fmt::Display for Account {
 }
 
 impl Split {
-    pub fn new_simple(
+    fn simple(
         guid: String,
         tx_guid: String,
         account_guid: String,
@@ -101,6 +103,30 @@ impl Split {
             quantity_denom,
             lot_guid: None,
         }
+    }
+
+    pub fn create(
+        tx_guid: String,
+        account: &Account,
+        memo: Option<String>,
+        currency: &Commodities,
+        amount: f64,
+    ) -> Self {
+        let fraction = f64::from(currency.fraction);
+        let value_num = ((fraction * amount).round()) as i64;
+        let value_denom = i64::from(currency.fraction);
+        let account_qty = (f64::from(account.commodity_scu) * amount) as i64;
+
+        Split::simple(
+            GUID::rand().to_string(),
+            tx_guid,
+            account.guid.clone(),
+            memo,
+            value_num,
+            value_denom,
+            account_qty,
+            i64::from(account.commodity_scu),
+        )
     }
 
     pub fn is_equal_amount(&self, amount: f64) -> bool {
