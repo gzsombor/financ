@@ -14,6 +14,7 @@ extern crate regex;
 extern crate lazy_static;
 
 pub mod correlator;
+mod dbmodifier;
 mod external_models;
 pub mod models;
 mod query;

@@ -7,6 +7,7 @@ use console::{style, Key, Term};
 use diesel::prelude::*;
 use guid_create::GUID;
 
+use dbmodifier::NewSplit;
 use external_models::{
     ExternalTransaction, ExternalTransactionList, Matching, SheetDefinition, TransactionPairing,
 };
@@ -326,28 +327,35 @@ impl CorrelationCommand {
         let commodity = CommoditiesQuery::get_by_guid(&connection, &commodity_guid)
             .expect("Currency not found!");
         let tr_guid = GUID::rand();
+        let tr_guid_str = tr_guid.to_string();
         let spend_date = transaction.get_matching_date(Matching::BySpending);
         let current_time = Local::now().naive_local();
-        let description = transaction.get_description_or_category();
+        let description = transaction
+            .get_description_or_category()
+            .unwrap_or_else(|| "".to_owned());
         let tr = Transaction::new(
-            tr_guid.to_string(),
+            tr_guid_str.clone(),
             commodity.guid.clone(),
             spend_date.map(|d| d.and_hms(12, 0, 0)),
             Some(current_time),
-            description.clone(),
+            Some(description.clone()),
         );
         let amount = transaction.get_amount().expect("Amount is expected!");
-        let split_account = Split::create(
-            tr_guid.to_string(),
+        let split_guid = GUID::rand().to_string();
+        let split_account = NewSplit::create(
+            &split_guid,
+            &tr_guid_str,
             &only_account,
-            description,
+            &description,
             &commodity,
             amount,
         );
-        let split_counter = Split::create(
-            tr_guid.to_string(),
+        let split_guid = GUID::rand().to_string();
+        let split_counter = NewSplit::create(
+            &split_guid,
+            &tr_guid_str,
             &counter_account,
-            None,
+            "",
             &commodity,
             -amount,
         );
