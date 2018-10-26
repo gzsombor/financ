@@ -200,7 +200,7 @@ enum Answer {
 
 impl CorrelationCommand {
     pub fn execute(&self, connection: &SqliteConnection, term: &Term) -> io::Result<usize> {
-        if let Some(only_account) = self.account_query.get_one(&connection) {
+        if let Some(only_account) = self.account_query.get_one(&connection, true) {
             let mut correlator = TransactionCorrelator::new(
                 &self.input_file.clone(),
                 &self.sheet_name.clone(),
@@ -241,7 +241,7 @@ impl CorrelationCommand {
             }
 
             if !unmatched_transactions.is_empty() {
-                if let Some(counter_account) = self.counterparty_account_query.get_one(&connection)
+                if let Some(counter_account) = self.counterparty_account_query.get_one(&connection, true)
                 {
                     self.try_to_fix(
                         &connection,

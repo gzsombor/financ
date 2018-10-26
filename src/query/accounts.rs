@@ -88,15 +88,17 @@ impl AccountQuery {
         }
     }
 
-    pub fn get_one(&self, connection: &SqliteConnection) -> Option<Account> {
+    pub fn get_one(&self, connection: &SqliteConnection, show_warning: bool) -> Option<Account> {
         let mut account_list = self.execute(&connection);
         if account_list.len() != 1 {
-            println!(
-                "Account filter should pick only one account, found : {}",
-                &account_list.len()
-            );
-            for acc in account_list {
-                acc.display();
+            if show_warning {
+                println!(
+                    "Account filter should pick only one account, found : {}",
+                    &account_list.len()
+                );
+                for acc in account_list {
+                    acc.display();
+                }
             }
             return None;
         }

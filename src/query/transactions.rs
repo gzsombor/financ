@@ -78,7 +78,6 @@ impl<'a> From<&'a ArgMatches<'a>> for TransactionQuery {
     fn from(entries_cmd: &ArgMatches) -> Self {
         let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
         let txid_filter = value_t!(entries_cmd, "txid", String).ok();
-        let account_filter = None;
         let description_filter = value_t!(entries_cmd, "description", String).ok();
         let memo_filter = value_t!(entries_cmd, "memo", String).ok();
         let before_filter = to_date(value_t!(entries_cmd, "before", String).ok());
@@ -86,7 +85,7 @@ impl<'a> From<&'a ArgMatches<'a>> for TransactionQuery {
         TransactionQuery {
             limit,
             txid_filter,
-            account_filter,
+            account_filter: None,
             description_filter,
             memo_filter,
             before_filter,

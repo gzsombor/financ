@@ -195,11 +195,14 @@ fn handle_list_accounts(ls_acc_cmd: &ArgMatches) {
 fn handle_list_entries(cmd: &ArgMatches) {
     let connection = establish_connection();
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
-    if let Some(account) = account_query.get_one(&connection) {
+    let q = if let Some(account) = account_query.get_one(&connection, false) {
         println!("Listing transactions in {}", &account.name);
-        let q = TransactionQuery::from(cmd).with_account_id(account.guid);
-        q.execute_and_display(&connection);
-    }
+        TransactionQuery::from(cmd).with_account_id(account.guid)
+    } else {
+        println!("Listing transactions");
+        TransactionQuery::from(cmd)
+    };
+    q.execute_and_display(&connection);
 }
 
 fn handle_list_currencies(cmd: &ArgMatches) {
