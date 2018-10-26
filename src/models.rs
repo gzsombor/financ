@@ -1,7 +1,9 @@
 use std::fmt;
 
 use chrono::NaiveDateTime;
+
 use schema::{accounts, splits, transactions};
+use utils::parse_sqlite_date;
 
 joinable!(splits -> transactions (tx_guid));
 joinable!(splits -> accounts (account_guid));
@@ -99,34 +101,17 @@ impl fmt::Display for Split {
 }
 
 impl Transaction {
-    pub fn new(
-        guid: String,
-        currency_guid: String,
-        post_date: Option<NaiveDateTime>,
-        enter_date: Option<NaiveDateTime>,
-        description: Option<String>,
-    ) -> Self {
-        Transaction {
-            guid,
-            currency_guid,
-            num: "".to_owned(),
-            post_date: post_date.as_ref().map(format_date),
-            enter_date: enter_date.as_ref().map(format_date),
-            description,
-        }
-    }
-
     pub fn posting(&self) -> Option<NaiveDateTime> {
-        parse_date(&self.post_date)
+        parse_sqlite_date(&self.post_date)
     }
     pub fn entering(&self) -> Option<NaiveDateTime> {
-        parse_date(&self.enter_date)
+        parse_sqlite_date(&self.enter_date)
     }
 }
 
 impl fmt::Display for Transaction {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        if let Some(parsed_date) = parse_date(&self.post_date) {
+        if let Some(parsed_date) = parse_sqlite_date(&self.post_date) {
             f.write_str(&parsed_date.format("%Y-%m-%d").to_string())?;
         } else {
             f.write_str("--------")?;
@@ -144,49 +129,5 @@ impl Commodities {
             "[{}]<{}> - {} (fraction:{})",
             self.namespace, self.guid, self.mnemonic, self.fraction
         );
-    }
-}
-
-fn parse_date(value: &Option<String>) -> Option<NaiveDateTime> {
-    value
-        .clone()
-        .and_then(|date_str| NaiveDateTime::parse_from_str(date_str.as_ref(), "%Y%m%d%H%M%S").ok())
-}
-
-fn format_date(ndt: &NaiveDateTime) -> String {
-    ndt.format("%Y%m%d%H%M%S").to_string()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::NaiveDate;
-
-    #[test]
-    fn test_parse_none() {
-        assert_eq!(parse_date(&None), None);
-    }
-
-    #[test]
-    fn test_parse_string() {
-        assert_eq!(
-            parse_date(&Some("20161020203213".to_string())),
-            Some(NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13))
-        );
-    }
-
-    #[test]
-    fn test_format_date() {
-        assert_eq!(
-            format_date(&NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13)),
-            "20161020203213"
-        );
-    }
-
-    #[test]
-    fn test_format_and_parse_date() {
-        let nd = NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13);
-        let as_str = format_date(&nd);
-        assert_eq!(parse_date(&Some(as_str)), Some(nd));
     }
 }

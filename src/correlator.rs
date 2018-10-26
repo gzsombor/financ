@@ -7,7 +7,7 @@ use console::{style, Key, Term};
 use diesel::prelude::*;
 use guid_create::GUID;
 
-use dbmodifier::NewSplit;
+use dbmodifier::{NewSplit, NewTransaction};
 use external_models::{
     ExternalTransaction, ExternalTransactionList, Matching, SheetDefinition, TransactionPairing,
 };
@@ -326,34 +326,35 @@ impl CorrelationCommand {
             .expect("Commodity guid is not null");
         let commodity = CommoditiesQuery::get_by_guid(&connection, &commodity_guid)
             .expect("Currency not found!");
-        let tr_guid = GUID::rand();
-        let tr_guid_str = tr_guid.to_string();
-        let spend_date = transaction.get_matching_date(Matching::BySpending);
+        let tr_guid = GUID::rand().to_string();
+        let spend_date = transaction
+            .get_matching_date(Matching::BySpending)
+            .map(|d| d.and_hms(12, 0, 0));
         let current_time = Local::now().naive_local();
         let description = transaction
             .get_description_or_category()
             .unwrap_or_else(|| "".to_owned());
-        let tr = Transaction::new(
-            tr_guid_str.clone(),
-            commodity.guid.clone(),
-            spend_date.map(|d| d.and_hms(12, 0, 0)),
-            Some(current_time),
-            Some(description.clone()),
-        );
         let amount = transaction.get_amount().expect("Amount is expected!");
-        let split_guid = GUID::rand().to_string();
-        let split_account = NewSplit::create(
-            &split_guid,
-            &tr_guid_str,
+
+        let tr = NewTransaction::insert(
+            &connection,
+            &tr_guid,
+            &commodity.guid,
+            spend_date,
+            current_time,
+            &description,
+        );
+        let split_account = NewSplit::insert(
+            &connection,
+            &tr_guid,
             &only_account,
             &description,
             &commodity,
             amount,
         );
-        let split_guid = GUID::rand().to_string();
-        let split_counter = NewSplit::create(
-            &split_guid,
-            &tr_guid_str,
+        let split_counter = NewSplit::insert(
+            &connection,
+            &tr_guid,
             &counter_account,
             "",
             &commodity,

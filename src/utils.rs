@@ -1,4 +1,4 @@
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use dotenv::dotenv;
 use regex::Regex;
@@ -36,6 +36,50 @@ pub fn extract_date(string: Option<String>) -> Option<NaiveDate> {
             day.parse().expect("Number as day"),
         ))
     })
+}
+
+pub fn parse_sqlite_date(value: &Option<String>) -> Option<NaiveDateTime> {
+    value
+        .clone()
+        .and_then(|date_str| NaiveDateTime::parse_from_str(date_str.as_ref(), "%Y%m%d%H%M%S").ok())
+}
+
+pub fn format_sqlite_date(ndt: &NaiveDateTime) -> String {
+    ndt.format("%Y%m%d%H%M%S").to_string()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+
+    #[test]
+    fn test_parse_none() {
+        assert_eq!(parse_sqlite_date(&None), None);
+    }
+
+    #[test]
+    fn test_parse_sqlite_string() {
+        assert_eq!(
+            parse_sqlite_date(&Some("20161020203213".to_string())),
+            Some(NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13))
+        );
+    }
+
+    #[test]
+    fn test_format_sqlite_date() {
+        assert_eq!(
+            format_sqlite_date(&NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13)),
+            "20161020203213"
+        );
+    }
+
+    #[test]
+    fn test_format_and_parse_sqlite_date() {
+        let nd = NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13);
+        let as_str = format_sqlite_date(&nd);
+        assert_eq!(parse_sqlite_date(&Some(as_str)), Some(nd));
+    }
 }
 
 #[cfg(test)]

@@ -1,8 +1,10 @@
+use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use guid_create::GUID;
 
 use models::{Account, Commodities};
 use schema::{splits, transactions};
+use utils::format_sqlite_date;
 
 #[derive(Insertable, Debug)]
 #[table_name = "splits"]
@@ -22,7 +24,7 @@ pub struct NewSplit<'a> {
     pub lot_guid: &'a str,
 }
 
-#[derive(Insertable)]
+#[derive(Insertable, Debug)]
 #[table_name = "transactions"]
 pub struct NewTransaction<'a> {
     pub guid: &'a str,
@@ -34,7 +36,7 @@ pub struct NewTransaction<'a> {
 }
 
 impl<'a> NewSplit<'a> {
-    fn simple(
+    fn new_with_defaults(
         guid: &'a str,
         tx_guid: &'a str,
         account_guid: &'a str,
@@ -60,7 +62,7 @@ impl<'a> NewSplit<'a> {
         }
     }
 
-    pub fn create(
+    fn create_split(
         split_guid: &'a str,
         tx_guid: &'a str,
         account: &'a Account,
@@ -72,7 +74,7 @@ impl<'a> NewSplit<'a> {
         let value_num = ((fraction * amount).round()) as i64;
         let value_denom = i64::from(currency.fraction);
         let account_qty = (f64::from(account.commodity_scu) * amount) as i64;
-        NewSplit::simple(
+        NewSplit::new_with_defaults(
             split_guid,
             tx_guid,
             &account.guid,
@@ -95,11 +97,56 @@ impl<'a> NewSplit<'a> {
         use schema::splits;
 
         let split_guid = GUID::rand().to_string();
-        let split = NewSplit::create(&split_guid, tx_guid, account, memo, currency, amount);
+        let split = NewSplit::create_split(&split_guid, tx_guid, account, memo, currency, amount);
 
         diesel::insert_into(splits::table)
             .values(&split)
             .execute(connection)
             .expect("Error saving new split")
+    }
+}
+
+impl<'a> NewTransaction<'a> {
+    pub fn new(
+        guid: &'a str,
+        currency_guid: &'a str,
+        post_date: &'a str,
+        enter_date: &'a str,
+        description: &'a str,
+    ) -> Self {
+        NewTransaction {
+            guid,
+            currency_guid,
+            num: "",
+            post_date,
+            enter_date,
+            description,
+        }
+    }
+
+    pub fn insert(
+        connection: &SqliteConnection,
+        guid: &'a str,
+        currency_guid: &'a str,
+        post_date: Option<NaiveDateTime>,
+        enter_date: NaiveDateTime,
+        description: &'a str,
+    ) -> usize {
+        let formatted_date = post_date
+            .map(|x| format_sqlite_date(&x))
+            .unwrap_or_default();
+        let formatted_enter_date = format_sqlite_date(&enter_date);
+        let transaction = NewTransaction::new(
+            guid,
+            currency_guid,
+            &formatted_date,
+            &formatted_enter_date,
+            description,
+        );
+
+        diesel::insert_into(transactions::table)
+            .values(transaction)
+            .execute(connection)
+            .expect("Error saving transaction")
     }
 }
