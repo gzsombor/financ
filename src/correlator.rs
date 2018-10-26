@@ -15,7 +15,7 @@ use models::{Account, Split, Transaction};
 use query::accounts::AccountQuery;
 use query::currencies::CommoditiesQuery;
 use query::transactions::TransactionQuery;
-use utils::to_string;
+use utils::{format_guid, to_string};
 
 pub struct CorrelationCommand {
     pub input_file: String,
@@ -241,7 +241,8 @@ impl CorrelationCommand {
             }
 
             if !unmatched_transactions.is_empty() {
-                if let Some(counter_account) = self.counterparty_account_query.get_one(&connection, true)
+                if let Some(counter_account) =
+                    self.counterparty_account_query.get_one(&connection, true)
                 {
                     self.try_to_fix(
                         &connection,
@@ -326,7 +327,7 @@ impl CorrelationCommand {
             .expect("Commodity guid is not null");
         let commodity = CommoditiesQuery::get_by_guid(&connection, &commodity_guid)
             .expect("Currency not found!");
-        let tr_guid = GUID::rand().to_string();
+        let tr_guid = format_guid(&GUID::rand().to_string());
         let spend_date = transaction
             .get_matching_date(Matching::BySpending)
             .map(|d| d.and_hms(12, 0, 0));
@@ -336,7 +337,7 @@ impl CorrelationCommand {
             .unwrap_or_else(|| "".to_owned());
         let amount = transaction.get_amount().expect("Amount is expected!");
 
-        let tr = NewTransaction::insert(
+        NewTransaction::insert(
             &connection,
             &tr_guid,
             &commodity.guid,
@@ -344,7 +345,7 @@ impl CorrelationCommand {
             current_time,
             &description,
         );
-        let split_account = NewSplit::insert(
+        let split_id_from = NewSplit::insert(
             &connection,
             &tr_guid,
             &only_account,
@@ -352,7 +353,7 @@ impl CorrelationCommand {
             &commodity,
             amount,
         );
-        let split_counter = NewSplit::insert(
+        let split_id_counter = NewSplit::insert(
             &connection,
             &tr_guid,
             &counter_account,
@@ -361,8 +362,8 @@ impl CorrelationCommand {
             -amount,
         );
         term.write_line(&format!(
-            "trans obj {:?} \n\t{} - {:?}\n\t{} - {:?}",
-            tr, only_account.name, split_account, counter_account.name, split_counter
+            "trans id:{} \n\t{} - {} \n\t{} - {}",
+            tr_guid, only_account.name, split_id_from, counter_account.name, split_id_counter
         ))?;
         Ok(())
     }

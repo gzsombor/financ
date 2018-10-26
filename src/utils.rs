@@ -48,6 +48,12 @@ pub fn format_sqlite_date(ndt: &NaiveDateTime) -> String {
     ndt.format("%Y%m%d%H%M%S").to_string()
 }
 
+pub fn format_guid(guid: &str) -> String {
+    let mut lower = guid.to_lowercase();
+    lower.retain(|c| c != '-');
+    lower
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -80,12 +86,6 @@ mod tests {
         let as_str = format_sqlite_date(&nd);
         assert_eq!(parse_sqlite_date(&Some(as_str)), Some(nd));
     }
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use chrono::NaiveDate;
 
     #[test]
     fn test_extract_date_none() {
@@ -97,6 +97,18 @@ mod tests {
         assert_eq!(
             extract_date(Some("XYZ. PD.  2016.10.20 4488620465".to_string())),
             Some(NaiveDate::from_ymd(2016, 10, 20))
+        );
+    }
+
+    #[test]
+    fn test_guid_formatting() {
+        assert_eq!(
+            format_guid("A4C28BAB-39CE-800D-AE5E-A072872B2D62"),
+            "a4c28bab39ce800dae5ea072872b2d62"
+        );
+        assert_eq!(
+            format_guid("3FC86613-6A98-584F-BB40-EB0715B75429"),
+            "3fc866136a98584fbb40eb0715b75429"
         );
     }
 

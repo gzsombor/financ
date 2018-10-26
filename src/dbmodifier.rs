@@ -4,7 +4,7 @@ use guid_create::GUID;
 
 use models::{Account, Commodities};
 use schema::{splits, transactions};
-use utils::format_sqlite_date;
+use utils::{format_guid, format_sqlite_date};
 
 #[derive(Insertable, Debug)]
 #[table_name = "splits"]
@@ -93,16 +93,21 @@ impl<'a> NewSplit<'a> {
         memo: &'a str,
         currency: &Commodities,
         amount: f64,
-    ) -> usize {
+    ) -> String {
         use schema::splits;
 
-        let split_guid = GUID::rand().to_string();
-        let split = NewSplit::create_split(&split_guid, tx_guid, account, memo, currency, amount);
+        let split_guid = format_guid(&GUID::rand().to_string());
+        {
+            let split =
+                NewSplit::create_split(&split_guid, tx_guid, account, memo, currency, amount);
 
-        diesel::insert_into(splits::table)
-            .values(&split)
-            .execute(connection)
-            .expect("Error saving new split")
+            let inserted_rows = diesel::insert_into(splits::table)
+                .values(&split)
+                .execute(connection)
+                .expect("Error saving new split");
+            assert_eq!(1, inserted_rows);
+        }
+        split_guid
     }
 }
 
@@ -144,9 +149,11 @@ impl<'a> NewTransaction<'a> {
             description,
         );
 
-        diesel::insert_into(transactions::table)
+        let inserted_rows = diesel::insert_into(transactions::table)
             .values(transaction)
             .execute(connection)
-            .expect("Error saving transaction")
+            .expect("Error saving transaction");
+        assert_eq!(1, inserted_rows);
+        inserted_rows
     }
 }
