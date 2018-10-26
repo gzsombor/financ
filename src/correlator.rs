@@ -196,6 +196,15 @@ enum Answer {
     Yes,
     No,
     Abort,
+    All,
+}
+
+struct AddTransactions<'a> {
+    connection: &'a SqliteConnection,
+    unmatched_transactions: &'a [ExternalTransaction],
+    only_account: &'a Account,
+    counter_account: &'a Account,
+    term: &'a Term,
 }
 
 impl CorrelationCommand {
@@ -244,13 +253,14 @@ impl CorrelationCommand {
                 if let Some(counter_account) =
                     self.counterparty_account_query.get_one(&connection, true)
                 {
-                    self.try_to_fix(
-                        &connection,
-                        &unmatched_transactions,
-                        &only_account,
-                        &counter_account,
-                        &term,
-                    )?;
+                    let add_transactions = AddTransactions {
+                        connection: &connection,
+                        unmatched_transactions: &unmatched_transactions,
+                        only_account: &only_account,
+                        counter_account: &counter_account,
+                        term: &term,
+                    };
+                    add_transactions.try_to_fix()?;
                 } else {
                     println!("Unable to fix, as counter account is not specified exactly!");
                 }
@@ -262,70 +272,62 @@ impl CorrelationCommand {
             Ok(0)
         }
     }
+}
 
-    fn try_to_fix(
-        &self,
-        connection: &SqliteConnection,
-        unmatched_transactions: &[ExternalTransaction],
-        only_account: &Account,
-        counter_account: &Account,
-        term: &Term,
-    ) -> io::Result<()> {
-        if only_account.commodity_guid != counter_account.commodity_guid {
-            term.write_line(&format!(
+impl<'a> AddTransactions<'a> {
+    fn try_to_fix(&self) -> io::Result<()> {
+        if self.only_account.commodity_guid != self.counter_account.commodity_guid {
+            self.term.write_line(&format!(
                 "The two account has different commodities, unable to transfer between: {} - {}",
-                style(only_account).red(),
-                style(counter_account).red()
+                style(self.only_account).red(),
+                style(self.counter_account).red()
             ))?;
             return Err(io::Error::new(
                 io::ErrorKind::Other,
                 "Different commodities!",
             ));
         }
-        term.write_line(&format!(
+        self.term.write_line(&format!(
             "Creating transactions between {} and {}",
-            counter_account, only_account
+            self.counter_account, self.only_account
         ))?;
-        for transaction in unmatched_transactions {
-            term.write_line(&format!(
-                "Adding {} [{}es/{}o/{}bort]",
+        for idx in 0..self.unmatched_transactions.len() {
+            let transaction = &self.unmatched_transactions[idx];
+            self.term.write_line(&format!(
+                "Adding {} [{}es/{}o/{}bort/a{}l]",
                 style(&transaction).cyan(),
                 style("Y").red(),
                 style("N").red(),
-                style("A").red()
+                style("A").red(),
+                style("L").red()
             ))?;
-            let answer = Answer::get(&term)?;
+            let answer = Answer::get(&self.term)?;
             match answer {
-                Answer::Yes => self.add_transaction(
-                    &connection,
-                    &transaction,
-                    &only_account,
-                    &counter_account,
-                    &term,
-                )?,
-                Answer::No => {
-                    term.write_line(&format!("Skipping {}", style(&transaction).magenta()))?
-                }
+                Answer::Yes => self.add_transaction(&transaction)?,
+                Answer::No => self
+                    .term
+                    .write_line(&format!("Skipping {}", style(&transaction).magenta()))?,
                 Answer::Abort => return Ok(()),
+                Answer::All => {
+                    for current in idx..self.unmatched_transactions.len() {
+                        self.add_transaction(&self.unmatched_transactions[current])?;
+                    }
+                    return Ok(());
+                }
             };
         }
         Ok(())
     }
 
-    fn add_transaction(
-        &self,
-        connection: &SqliteConnection,
-        transaction: &ExternalTransaction,
-        only_account: &Account,
-        counter_account: &Account,
-        term: &Term,
-    ) -> io::Result<()> {
-        term.write_line(&format!("adding {}", style(&transaction).red()))?;
-        let commodity_guid = &only_account
+    fn add_transaction(&self, transaction: &ExternalTransaction) -> io::Result<()> {
+        self.term
+            .write_line(&format!("adding {}", style(&transaction).red()))?;
+        let commodity_guid = &self
+            .only_account
             .commodity_guid
             .clone()
             .expect("Commodity guid is not null");
-        let commodity = CommoditiesQuery::get_by_guid(&connection, &commodity_guid)
+        let commodity = CommoditiesQuery::get_by_guid(&self.connection, &commodity_guid)
             .expect("Currency not found!");
         let tr_guid = format_guid(&GUID::rand().to_string());
         let spend_date = transaction
@@ -338,7 +340,7 @@ impl CorrelationCommand {
         let amount = transaction.get_amount().expect("Amount is expected!");
 
         NewTransaction::insert(
-            &connection,
+            &self.connection,
             &tr_guid,
             &commodity.guid,
             spend_date,
@@ -346,24 +348,28 @@ impl CorrelationCommand {
             &description,
         );
         let split_id_from = NewSplit::insert(
-            &connection,
+            &self.connection,
             &tr_guid,
-            &only_account,
+            &self.only_account,
             &description,
             &commodity,
             amount,
         );
         let split_id_counter = NewSplit::insert(
-            &connection,
+            &self.connection,
             &tr_guid,
-            &counter_account,
+            &self.counter_account,
             "",
             &commodity,
             -amount,
         );
-        term.write_line(&format!(
+        self.term.write_line(&format!(
             "trans id:{} \n\t{} - {} \n\t{} - {}",
-            tr_guid, only_account.name, split_id_from, counter_account.name, split_id_counter
+            tr_guid,
+            self.only_account.name,
+            split_id_from,
+            self.counter_account.name,
+            split_id_counter
         ))?;
         Ok(())
     }
@@ -382,6 +388,8 @@ impl Answer {
                 Key::Escape => return Ok(Answer::Abort),
                 Key::Char('a') => return Ok(Answer::Abort),
                 Key::Char('A') => return Ok(Answer::Abort),
+                Key::Char('l') => return Ok(Answer::All),
+                Key::Char('L') => return Ok(Answer::All),
                 _ => {}
             }
         }
