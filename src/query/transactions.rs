@@ -2,7 +2,7 @@ use chrono::naive::NaiveDate;
 use clap::ArgMatches;
 use diesel::prelude::*;
 
-use models::{Split, Transaction};
+use models::{Account, Split, Transaction};
 use utils::to_date;
 
 pub struct TransactionQuery {
@@ -62,10 +62,29 @@ impl TransactionQuery {
             .expect("Error loading splits")
     }
 
-    pub fn execute_and_display(&self, connection: &SqliteConnection) {
+    pub fn execute_and_process(
+        &self,
+        connection: &SqliteConnection,
+        target_account: &Option<Account>,
+    ) {
         let results = self.execute(&connection);
-        println!("Displaying {} splits", results.len());
-        for (split, tx) in results {
+        match target_account {
+            None => self.display(results),
+            Some(account) => self.move_splits(results, account),
+        }
+    }
+    fn display(&self, transactions: Vec<(Split, Transaction)>) {
+        println!("Displaying {} splits", transactions.len());
+        for (split, tx) in transactions {
+            println!(
+                "[{}]<{}> - {} - {}",
+                split.account_guid, split.tx_guid, tx, split
+            );
+        }
+    }
+    fn move_splits(&self, transactions: Vec<(Split, Transaction)>, target_account: &Account) {
+        println!("Moving {} splits to {}", transactions.len(), target_account);
+        for (split, tx) in transactions {
             println!(
                 "[{}]<{}> - {} - {}",
                 split.account_guid, split.tx_guid, tx, split

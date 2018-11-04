@@ -56,6 +56,21 @@ pub const FROM_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
     type_name_short: "T",
 };
 
+pub const TARGET_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
+    name: "target_name",
+    name_long: "target-account-name",
+    name_short: "r",
+    parent_guid: "target_parent_guid",
+    parent_guid_long: "target-account-parent",
+    parent_guid_short: "P",
+    guid: "target_guid",
+    guid_long: "target-account-guid",
+    guid_short: "G",
+    type_name: "target_type",
+    type_name_long: "target-account-type",
+    type_name_short: "T",
+};
+
 impl AccountQuery {
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<Account> {
         use schema::accounts::dsl::*;

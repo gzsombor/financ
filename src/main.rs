@@ -25,7 +25,7 @@ use clap::{App, AppSettings, Arg, ArgMatches, Shell, SubCommand};
 use console::Term;
 use correlator::CorrelationCommand;
 use external_models::Matching;
-use query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS};
+use query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS, TARGET_ACCOUNT_PARAMS};
 use query::currencies::CommoditiesQuery;
 use query::transactions::TransactionQuery;
 use utils::establish_connection;
@@ -63,56 +63,64 @@ fn build_cli() -> App<'static, 'static> {
         )
         .subcommand(
             DEFAULT_ACCOUNT_PARAMS.add_arguments(
-                SubCommand::with_name("transactions")
-                    .arg(
-                        Arg::with_name("limit")
-                            .short("l")
-                            .long("limit")
-                            .help("Limit number of splits")
-                            .required(false)
-                            .validator(is_a_number)
-                            .takes_value(true),
-                    )
-                    .arg(
-                        Arg::with_name("txid")
-                            .short("x")
-                            .long("transaction-id")
-                            .help("Splits with the given transaction id ")
-                            .required(false)
-                            .takes_value(true),
-                    )
-                    .arg(
-                        Arg::with_name("before")
-                            .short("b")
-                            .long("before")
-                            .help("Splits before the given date in yyyy-mm-dd format")
-                            .required(false)
-                            .takes_value(true),
-                    )
-                    .arg(
-                        Arg::with_name("after")
-                            .short("f")
-                            .long("after")
-                            .help("Splits after the given date in yyyy-mm-dd format")
-                            .required(false)
-                            .takes_value(true),
-                    )
-                    .arg(
-                        Arg::with_name("memo")
-                            .short("m")
-                            .long("memo")
-                            .help("Splits with the given memo")
-                            .required(false)
-                            .takes_value(true),
-                    )
-                    .arg(
-                        Arg::with_name("description")
-                            .short("d")
-                            .long("description")
-                            .help("Transaction with the given description")
-                            .required(false)
-                            .takes_value(true),
-                    ),
+                TARGET_ACCOUNT_PARAMS.add_arguments(
+                    SubCommand::with_name("transactions")
+                        .arg(
+                            Arg::with_name("limit")
+                                .short("l")
+                                .long("limit")
+                                .help("Limit number of splits")
+                                .required(false)
+                                .validator(is_a_number)
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("txid")
+                                .short("x")
+                                .long("transaction-id")
+                                .help("Splits with the given transaction id ")
+                                .required(false)
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("before")
+                                .short("b")
+                                .long("before")
+                                .help("Splits before the given date in yyyy-mm-dd format")
+                                .required(false)
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("after")
+                                .short("f")
+                                .long("after")
+                                .help("Splits after the given date in yyyy-mm-dd format")
+                                .required(false)
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("memo")
+                                .short("e")
+                                .long("memo")
+                                .help("Splits with the given memo")
+                                .required(false)
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("description")
+                                .short("d")
+                                .long("description")
+                                .help("Transaction with the given description")
+                                .required(false)
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("move-split")
+                                .short("m")
+                                .long("move-split")
+                                .help("Move the found splits to the target account"),
+                        ),
+                ),
             ),
         )
         .subcommand(
@@ -195,6 +203,18 @@ fn handle_list_accounts(ls_acc_cmd: &ArgMatches) {
 fn handle_list_entries(cmd: &ArgMatches) {
     let connection = establish_connection();
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
+    let move_splits = cmd.is_present("move-split");
+    let move_target_account = if move_splits {
+        let target_account_query = TARGET_ACCOUNT_PARAMS.build(&cmd, None);
+        let target_account = target_account_query.get_one(&connection, false);
+        if target_account.is_none() {
+            println!("Unable to determine the target account for the move-split command!");
+            return;
+        }
+        target_account
+    } else {
+        None
+    };
     let q = if let Some(account) = account_query.get_one(&connection, false) {
         println!("Listing transactions in {}", &account.name);
         TransactionQuery::from(cmd).with_account_id(account.guid)
@@ -202,7 +222,7 @@ fn handle_list_entries(cmd: &ArgMatches) {
         println!("Listing transactions");
         TransactionQuery::from(cmd)
     };
-    q.execute_and_display(&connection);
+    q.execute_and_process(&connection, &move_target_account);
 }
 
 fn handle_list_currencies(cmd: &ArgMatches) {
