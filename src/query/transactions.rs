@@ -70,7 +70,7 @@ impl TransactionQuery {
         let results = self.execute(&connection);
         match target_account {
             None => self.display(results),
-            Some(account) => self.move_splits(results, account),
+            Some(account) => self.move_splits(&connection, results, account),
         }
     }
     fn display(&self, transactions: Vec<(Split, Transaction)>) {
@@ -82,13 +82,23 @@ impl TransactionQuery {
             );
         }
     }
-    fn move_splits(&self, transactions: Vec<(Split, Transaction)>, target_account: &Account) {
+    fn move_splits(
+        &self,
+        connection: &SqliteConnection,
+        transactions: Vec<(Split, Transaction)>,
+        target_account: &Account,
+    ) {
+        use schema::splits::dsl::{account_guid, splits};
         println!("Moving {} splits to {}", transactions.len(), target_account);
         for (split, tx) in transactions {
             println!(
                 "[{}]<{}> - {} - {}",
                 split.account_guid, split.tx_guid, tx, split
             );
+            let res = diesel::update(splits.find(split.guid))
+                .set(account_guid.eq(&target_account.guid))
+                .execute(connection);
+            assert_eq!(1, res.unwrap());
         }
     }
 }
