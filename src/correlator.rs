@@ -359,7 +359,7 @@ impl<'a> AddTransactions<'a> {
             &self.connection,
             &tr_guid,
             &self.counter_account,
-            "",
+            &transaction.get_other_account_desc(),
             &commodity,
             -amount,
         );

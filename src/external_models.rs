@@ -15,6 +15,7 @@ pub struct ExternalTransaction {
     category: Option<String>,
     description: Option<String>,
     other_account: Option<String>,
+    other_account_name: Option<String>,
     textual_date: Option<NaiveDate>,
 }
 
@@ -68,6 +69,20 @@ impl ExternalTransaction {
     */
     pub fn get_amount(&self) -> Option<f64> {
         self.amount
+    }
+
+    pub fn get_other_account_desc(&self) -> String {
+        match (&self.other_account, &self.other_account_name) {
+            (Some(acc), Some(name)) => {
+                let mut res = acc.clone();
+                res.push_str(" - ");
+                res.push_str(&name);
+                res
+            }
+            (None, Some(name)) => name.clone(),
+            (Some(acc), None) => acc.clone(),
+            (_, _) => "".to_owned(),
+        }
     }
 }
 
@@ -147,6 +162,7 @@ impl SheetDefinition {
                     category: SheetDefinition::cell_to_string(&row[1]),
                     description: descrip,
                     other_account: SheetDefinition::cell_to_string(&row[6]),
+                    other_account_name: SheetDefinition::cell_to_string(&row[7]),
                     textual_date: parsed_date,
                 }
             })
