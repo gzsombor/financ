@@ -1,4 +1,4 @@
-//use std::collections::BTreeMap;
+use std::io;
 
 use clap::ArgMatches;
 use diesel::prelude::*;
@@ -38,12 +38,14 @@ impl CommoditiesQuery {
             commodity_map
         }
     */
-    pub fn execute_and_display(&self, connection: &SqliteConnection) {
+    pub fn execute_and_display(&self, connection: &SqliteConnection) -> io::Result<usize> {
         let results = self.execute(&connection);
         println!("Displaying {} commodities", results.len());
+        let len = results.len();
         for commodity in results {
             commodity.display();
         }
+        Ok(len)
     }
 
     pub fn get_by_guid(connection: &SqliteConnection, id: &str) -> Option<Commodities> {

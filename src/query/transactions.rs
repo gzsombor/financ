@@ -1,5 +1,8 @@
+use std::io;
+
 use chrono::naive::NaiveDate;
 use clap::ArgMatches;
+use console::{style, Term};
 use diesel::prelude::*;
 
 use models::{Account, Split, Transaction};
@@ -66,30 +69,39 @@ impl TransactionQuery {
         &self,
         connection: &SqliteConnection,
         target_account: &Option<Account>,
-    ) {
+        term: &Term,
+    ) -> io::Result<usize> {
         let results = self.execute(&connection);
         match target_account {
             None => self.display(results),
-            Some(account) => self.move_splits(&connection, results, account),
+            Some(account) => self.move_splits(&connection, results, account, &term),
         }
     }
-    fn display(&self, transactions: Vec<(Split, Transaction)>) {
-        println!("Displaying {} splits", transactions.len());
+    fn display(&self, transactions: Vec<(Split, Transaction)>) -> io::Result<usize> {
+        let len = transactions.len();
+        println!("Displaying {} splits", len);
         for (split, tx) in transactions {
             println!(
                 "[{}]<{}> - {} - {}",
                 split.account_guid, split.tx_guid, tx, split
             );
         }
+        Ok(len)
     }
     fn move_splits(
         &self,
         connection: &SqliteConnection,
         transactions: Vec<(Split, Transaction)>,
         target_account: &Account,
-    ) {
+        term: &Term,
+    ) -> io::Result<usize> {
         use schema::splits::dsl::{account_guid, splits};
-        println!("Moving {} splits to {}", transactions.len(), target_account);
+        let len = transactions.len();
+        term.write_line(&format!(
+            "Moving {} splits to {}",
+            style(len).cyan(),
+            style(target_account).blue()
+        ))?;
         for (split, tx) in transactions {
             println!(
                 "[{}]<{}> - {} - {}",
@@ -100,6 +112,7 @@ impl TransactionQuery {
                 .execute(connection);
             assert_eq!(1, res.unwrap());
         }
+        Ok(len)
     }
 }
 

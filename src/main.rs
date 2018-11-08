@@ -21,8 +21,11 @@ mod query;
 pub mod schema;
 pub mod utils;
 
+use std::io;
+
 use clap::{App, AppSettings, Arg, ArgMatches, Shell, SubCommand};
-use console::Term;
+use console::{style, Term};
+
 use correlator::CorrelationCommand;
 use external_models::Matching;
 use query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS, TARGET_ACCOUNT_PARAMS};
@@ -39,8 +42,12 @@ fn main() {
         ("correlate", Some(cmd)) => handle_correlate(cmd),
         ("commodities", Some(cmd)) => handle_list_currencies(cmd),
         ("completions", Some(cmd)) => handle_completions(cmd),
-        (cmd, _) => println!("Unknown command: {}", cmd),
+        (cmd, _) => {
+            println!("Unknown command: {}", cmd);
+            Ok(0)
+        }
     }
+    .unwrap();
 }
 
 fn build_cli() -> App<'static, 'static> {
@@ -194,13 +201,16 @@ fn build_cli() -> App<'static, 'static> {
         .setting(AppSettings::ArgRequiredElseHelp)
 }
 
-fn handle_list_accounts(ls_acc_cmd: &ArgMatches) {
+fn handle_list_accounts(ls_acc_cmd: &ArgMatches) -> io::Result<usize> {
     let connection = establish_connection();
     let q = DEFAULT_ACCOUNT_PARAMS.build(ls_acc_cmd, Some("limit"));
     q.execute_and_display(&connection);
+    Ok(0)
 }
 
-fn handle_list_entries(cmd: &ArgMatches) {
+fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
+    let term = Term::stdout();
+
     let connection = establish_connection();
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
     let move_splits = cmd.is_present("move-split");
@@ -209,29 +219,53 @@ fn handle_list_entries(cmd: &ArgMatches) {
         let target_account = target_account_query.get_one(&connection, false);
         if target_account.is_none() {
             println!("Unable to determine the target account for the move-split command!");
-            return;
+            term.write_line(&format!(
+                "Unable to determine the target account for the move-split command:{:?}",
+                style(target_account_query).red()
+            ))?;
+            return Err(io::Error::new(
+                io::ErrorKind::Other,
+                "Target account missing",
+            ));
         }
         target_account
     } else {
         None
     };
     let q = if let Some(account) = account_query.get_one(&connection, false) {
-        println!("Listing transactions in {}", &account.name);
+        if let Some(target_account) = &move_target_account {
+            if target_account.commodity_guid != account.commodity_guid {
+                term.write_line(&format!(
+                    "The two account has different commodities, unable to transfer between: {} - {}",
+                    style(account).red(),
+                    style(target_account).red()
+                ))?;
+                return Err(io::Error::new(
+                    io::ErrorKind::Other,
+                    "Different commodities!",
+                ));
+            }
+        }
+
+        term.write_line(&format!(
+            "Listing transactions in {}",
+            style(account.name).blue()
+        ))?;
         TransactionQuery::from(cmd).with_account_id(account.guid)
     } else {
-        println!("Listing transactions");
+        term.write_line("Listing transactions")?;
         TransactionQuery::from(cmd)
     };
-    q.execute_and_process(&connection, &move_target_account);
+    return q.execute_and_process(&connection, &move_target_account, &term);
 }
 
-fn handle_list_currencies(cmd: &ArgMatches) {
+fn handle_list_currencies(cmd: &ArgMatches) -> io::Result<usize> {
     let connection = establish_connection();
     let q = CommoditiesQuery::from(cmd);
-    q.execute_and_display(&connection);
+    q.execute_and_display(&connection)
 }
 
-fn handle_correlate(cmd: &ArgMatches) {
+fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
     let input_file = value_t!(cmd, "file", String).unwrap();
     let sheet_name = value_t!(cmd, "sheet_name", String).unwrap();
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
@@ -254,11 +288,12 @@ fn handle_correlate(cmd: &ArgMatches) {
         account_query,
         counterparty_account_query,
     };
-    cmd.execute(&connection, &term).unwrap();
+    cmd.execute(&connection, &term)
 }
 
-fn handle_completions(cmd: &ArgMatches) {
+fn handle_completions(cmd: &ArgMatches) -> io::Result<usize> {
     build_cli().gen_completions("financ", Shell::Fish, ".");
+    Ok(0)
 }
 
 fn is_a_number(v: String) -> Result<(), String> {

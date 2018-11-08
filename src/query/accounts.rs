@@ -3,6 +3,7 @@ use diesel::prelude::*;
 
 use models::Account;
 
+#[derive(Debug)]
 pub struct AccountQuery {
     pub limit: i64,
     pub guid_filter: Option<String>,
