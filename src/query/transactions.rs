@@ -31,6 +31,18 @@ impl TransactionQuery {
         }
     }
 
+    pub fn with_limit(self, limit: i64) -> Self {
+        TransactionQuery {
+            limit: limit,
+            txid_filter: self.txid_filter,
+            account_filter: self.account_filter,
+            description_filter: self.description_filter,
+            memo_filter: self.memo_filter,
+            before_filter: self.before_filter,
+            after_filter: self.after_filter,
+        }
+    }
+
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<(Split, Transaction)> {
         use schema::splits::dsl::*;
         use schema::transactions::dsl::*;

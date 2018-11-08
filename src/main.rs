@@ -255,7 +255,7 @@ fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
         term.write_line("Listing transactions")?;
         TransactionQuery::from(cmd)
     };
-    return q.execute_and_process(&connection, &move_target_account, &term);
+    return q.with_limit(100).execute_and_process(&connection, &move_target_account, &term);
 }
 
 fn handle_list_currencies(cmd: &ArgMatches) -> io::Result<usize> {
