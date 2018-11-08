@@ -218,7 +218,6 @@ fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
         let target_account_query = TARGET_ACCOUNT_PARAMS.build(&cmd, None);
         let target_account = target_account_query.get_one(&connection, false);
         if target_account.is_none() {
-            println!("Unable to determine the target account for the move-split command!");
             term.write_line(&format!(
                 "Unable to determine the target account for the move-split command:{:?}",
                 style(target_account_query).red()
