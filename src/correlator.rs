@@ -22,6 +22,7 @@ pub struct CorrelationCommand {
     pub sheet_name: String,
     pub matching: Matching,
     pub verbose: bool,
+    pub list_extra_transactions: bool,
     pub account_query: AccountQuery,
     pub counterparty_account_query: AccountQuery,
 }
@@ -243,7 +244,7 @@ impl CorrelationCommand {
                 style(&db_transactions.len()).red()
             ))?;
 
-            if self.verbose {
+            if self.list_extra_transactions {
                 for tr in &db_transactions {
                     println!(" - {}", &tr);
                 }

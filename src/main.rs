@@ -159,6 +159,14 @@ fn build_cli() -> App<'static, 'static> {
                                 .takes_value(false),
                         )
                         .arg(
+                            Arg::with_name("list-extra-transactions")
+                                .short("X")
+                                .long("list-extra-transactions")
+                                .help("List extra transactions not found in the external source")
+                                .required(false)
+                                .takes_value(false),
+                        )
+                        .arg(
                             Arg::with_name("verbose")
                                 .short("v")
                                 .long("verbose")
@@ -277,6 +285,7 @@ fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
     } else {
         Matching::BySpending
     };
+    let list_extra_transactions = cmd.is_present("list-extra-transactions");
 
     let term = Term::stdout();
     let cmd = CorrelationCommand {
@@ -284,6 +293,7 @@ fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
         sheet_name,
         matching,
         verbose,
+        list_extra_transactions,
         account_query,
         counterparty_account_query,
     };
