@@ -138,9 +138,9 @@ fn build_cli() -> App<'static, 'static> {
                 FROM_ACCOUNT_PARAMS.add_arguments(
                     SubCommand::with_name("correlate")
                         .arg(
-                            Arg::with_name("file")
-                                .short("f")
-                                .long("file")
+                            Arg::with_name("input")
+                                .short("i")
+                                .long("input")
                                 .help("The file which contains a list of transaction to correlate")
                                 .required(true)
                                 .takes_value(true),
@@ -151,6 +151,14 @@ fn build_cli() -> App<'static, 'static> {
                                 .long("sheet-name")
                                 .help("The name of the sheet")
                                 .required(true)
+                                .takes_value(true),
+                        )
+                        .arg(
+                            Arg::with_name("format")
+                                .short("f")
+                                .long("format")
+                                .help("The format of the sheet")
+                                .required(false)
                                 .takes_value(true),
                         )
                         .arg(
@@ -278,7 +286,7 @@ fn handle_list_currencies(cmd: &ArgMatches) -> io::Result<usize> {
 }
 
 fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
-    let input_file = value_t!(cmd, "file", String).unwrap();
+    let input_file = value_t!(cmd, "input", String).unwrap();
     let sheet_name = value_t!(cmd, "sheet_name", String).unwrap();
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
     let counterparty_account_query = FROM_ACCOUNT_PARAMS.build(&cmd, None);
@@ -303,7 +311,7 @@ fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
         account_query,
         counterparty_account_query,
     };
-    let format = create_format(format);
+    let format = create_format(format).expect("Unknown format");
     cmd.execute(&connection, &term, &format)
 }
 

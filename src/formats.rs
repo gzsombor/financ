@@ -4,9 +4,17 @@ use sheets::{cell_to_date, cell_to_float, cell_to_string};
 use utils::extract_date;
 
 struct OtpFormat;
+struct GranitFormat;
 
-pub fn create_format(name: Option<String>) -> impl SheetFormat {
-    OtpFormat {}
+pub fn create_format(name: Option<String>) -> Option<impl SheetFormat> {
+    if let Some(format_name) = name {
+        match format_name.to_lowercase().as_ref() {
+            "otp" => Some(OtpFormat {}),
+            _ => None,
+        }
+    } else {
+        Some(OtpFormat {})
+    }
 }
 
 impl SheetFormat for OtpFormat {
