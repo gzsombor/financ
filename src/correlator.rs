@@ -9,7 +9,8 @@ use guid_create::GUID;
 
 use dbmodifier::{NewSplit, NewTransaction};
 use external_models::{
-    ExternalTransaction, ExternalTransactionList, Matching, SheetDefinition, TransactionPairing,
+    ExternalTransaction, ExternalTransactionList, Matching, SheetDefinition, SheetFormat,
+    TransactionPairing,
 };
 use models::{Account, Split, Transaction};
 use query::accounts::AccountQuery;
@@ -42,10 +43,11 @@ impl TransactionCorrelator {
         account: String,
         matching: Matching,
         verbose: bool,
+        format: &SheetFormat,
     ) -> Self {
         let mut sheet_definition = SheetDefinition::new(input_file);
 
-        let external_transactions = sheet_definition.load(&sheet_name, matching);
+        let external_transactions = sheet_definition.load(&sheet_name, matching, format);
         TransactionCorrelator {
             external_transactions,
             account,
@@ -209,7 +211,12 @@ struct AddTransactions<'a> {
 }
 
 impl CorrelationCommand {
-    pub fn execute(&self, connection: &SqliteConnection, term: &Term) -> io::Result<usize> {
+    pub fn execute(
+        &self,
+        connection: &SqliteConnection,
+        term: &Term,
+        format: &SheetFormat,
+    ) -> io::Result<usize> {
         if let Some(only_account) = self.account_query.get_one(&connection, true) {
             let mut correlator = TransactionCorrelator::new(
                 &self.input_file.clone(),
@@ -217,6 +224,7 @@ impl CorrelationCommand {
                 only_account.guid.clone(),
                 self.matching,
                 self.verbose,
+                format,
             );
             correlator.build_mapping(connection);
 

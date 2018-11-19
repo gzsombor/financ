@@ -5,18 +5,17 @@ use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::NaiveDate;
 
 use models::{Split, Transaction};
-use utils::extract_date;
 
 #[derive(Debug, Clone)]
 pub struct ExternalTransaction {
-    date: Option<NaiveDate>,
-    booking_date: Option<NaiveDate>,
-    amount: Option<f64>,
-    category: Option<String>,
-    description: Option<String>,
-    other_account: Option<String>,
-    other_account_name: Option<String>,
-    textual_date: Option<NaiveDate>,
+    pub date: Option<NaiveDate>,
+    pub booking_date: Option<NaiveDate>,
+    pub amount: Option<f64>,
+    pub category: Option<String>,
+    pub description: Option<String>,
+    pub other_account: Option<String>,
+    pub other_account_name: Option<String>,
+    pub textual_date: Option<NaiveDate>,
 }
 
 impl fmt::Display for ExternalTransaction {
@@ -98,6 +97,10 @@ pub struct SheetDefinition {
     workbook: Sheets,
 }
 
+pub trait SheetFormat {
+    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction>;
+}
+
 impl SheetDefinition {
     pub fn new(input_file: &str) -> Self {
         let workbook = open_workbook_auto(&input_file).expect("Cannot open file");
@@ -107,66 +110,20 @@ impl SheetDefinition {
         }
     }
 
-    pub fn load(&mut self, sheet_name: &str, matching: Matching) -> ExternalTransactionList {
+    pub fn load(
+        &mut self,
+        sheet_name: &str,
+        matching: Matching,
+        format: &SheetFormat,
+    ) -> ExternalTransactionList {
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
             println!("found sheet '{}'", &sheet_name);
-            let trans = SheetDefinition::parse_sheet(&sheet);
+            let trans = format.parse_sheet(&sheet);
             let (min, max) = SheetDefinition::find_min_max(&trans, matching);
             ExternalTransactionList(trans, min, max)
         } else {
             ExternalTransactionList(Vec::new(), None, None)
         }
-    }
-
-    fn cell_to_date(cell: &DataType) -> Option<NaiveDate> {
-        if let DataType::String(str) = cell {
-            NaiveDate::parse_from_str(str, "%Y.%m.%d.").ok()
-        } else {
-            None
-        }
-    }
-
-    fn cell_to_string(cell: &DataType) -> Option<String> {
-        if let DataType::String(str) = cell {
-            Some(str.clone())
-        } else {
-            None
-        }
-    }
-
-    fn cell_to_float(cell: &DataType) -> Option<f64> {
-        if let DataType::Float(flt) = cell {
-            Some(*flt)
-        } else {
-            None
-        }
-    }
-
-    fn parse_sheet(range: &Range<DataType>) -> Vec<ExternalTransaction> {
-        println!(
-            "Range starts : {:?} ends at {:?}",
-            range.start(),
-            range.end()
-        );
-
-        range
-            .rows()
-            .filter(|row| row[0] != DataType::Empty)
-            .map(|row| {
-                let descrip = SheetDefinition::cell_to_string(&row[8]);
-                let parsed_date = extract_date(descrip.clone());
-                ExternalTransaction {
-                    date: SheetDefinition::cell_to_date(&row[2]),
-                    booking_date: SheetDefinition::cell_to_date(&row[3]),
-                    amount: SheetDefinition::cell_to_float(&row[4]),
-                    category: SheetDefinition::cell_to_string(&row[1]),
-                    description: descrip,
-                    other_account: SheetDefinition::cell_to_string(&row[6]),
-                    other_account_name: SheetDefinition::cell_to_string(&row[7]),
-                    textual_date: parsed_date,
-                }
-            })
-            .collect()
     }
 
     fn find_min_max(

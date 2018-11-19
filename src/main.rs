@@ -16,9 +16,11 @@ extern crate lazy_static;
 pub mod correlator;
 mod dbmodifier;
 mod external_models;
+mod formats;
 pub mod models;
 mod query;
 pub mod schema;
+mod sheets;
 pub mod utils;
 
 use std::io;
@@ -28,6 +30,7 @@ use console::{style, Term};
 
 use correlator::CorrelationCommand;
 use external_models::Matching;
+use formats::create_format;
 use query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS, TARGET_ACCOUNT_PARAMS};
 use query::currencies::CommoditiesQuery;
 use query::transactions::TransactionQuery;
@@ -263,7 +266,9 @@ fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
         term.write_line("Listing transactions")?;
         TransactionQuery::from(cmd)
     };
-    return q.with_limit(100).execute_and_process(&connection, &move_target_account, &term);
+    return q
+        .with_limit(100)
+        .execute_and_process(&connection, &move_target_account, &term);
 }
 
 fn handle_list_currencies(cmd: &ArgMatches) -> io::Result<usize> {
@@ -278,6 +283,7 @@ fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
     let counterparty_account_query = FROM_ACCOUNT_PARAMS.build(&cmd, None);
     let verbose = cmd.is_present("verbose");
+    let format = value_t!(cmd, "format", String).ok();
 
     let connection = establish_connection();
     let matching = if cmd.is_present("by_booking_date") {
@@ -297,7 +303,8 @@ fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
         account_query,
         counterparty_account_query,
     };
-    cmd.execute(&connection, &term)
+    let format = create_format(format);
+    cmd.execute(&connection, &term, &format)
 }
 
 fn handle_completions(cmd: &ArgMatches) -> io::Result<usize> {
