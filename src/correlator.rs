@@ -43,7 +43,7 @@ impl TransactionCorrelator {
         account: String,
         matching: Matching,
         verbose: bool,
-        format: &SheetFormat,
+        format: &Box<SheetFormat>,
     ) -> Self {
         let mut sheet_definition = SheetDefinition::new(input_file);
 
@@ -215,7 +215,7 @@ impl CorrelationCommand {
         &self,
         connection: &SqliteConnection,
         term: &Term,
-        format: &SheetFormat,
+        format: &Box<SheetFormat>,
     ) -> io::Result<usize> {
         if let Some(only_account) = self.account_query.get_one(&connection, true) {
             let mut correlator = TransactionCorrelator::new(

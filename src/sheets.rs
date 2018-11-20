@@ -9,6 +9,14 @@ pub fn cell_to_date(cell: &DataType) -> Option<NaiveDate> {
     }
 }
 
+pub fn cell_to_iso_date(cell: &DataType) -> Option<NaiveDate> {
+    if let DataType::String(str) = cell {
+        NaiveDate::parse_from_str(str, "%Y-%m-%d").ok()
+    } else {
+        None
+    }
+}
+
 pub fn cell_to_string(cell: &DataType) -> Option<String> {
     if let DataType::String(str) = cell {
         Some(str.clone())

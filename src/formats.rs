@@ -1,30 +1,25 @@
 use calamine::{DataType, Range};
 use external_models::{ExternalTransaction, SheetFormat};
-use sheets::{cell_to_date, cell_to_float, cell_to_string};
+use sheets::{cell_to_date, cell_to_float, cell_to_iso_date, cell_to_string};
 use utils::extract_date;
 
 struct OtpFormat;
 struct GranitFormat;
 
-pub fn create_format(name: Option<String>) -> Option<impl SheetFormat> {
+pub fn create_format(name: Option<String>) -> Option<Box<SheetFormat>> {
     if let Some(format_name) = name {
         match format_name.to_lowercase().as_ref() {
-            "otp" => Some(OtpFormat {}),
+            "otp" => Some(Box::new(OtpFormat {})),
+            "granit" => Some(Box::new(GranitFormat {})),
             _ => None,
         }
     } else {
-        Some(OtpFormat {})
+        Some(Box::new(OtpFormat {}))
     }
 }
 
 impl SheetFormat for OtpFormat {
     fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
-        /*        println!(
-                    "Range starts : {:?} ends at {:?}",
-                    range.start(),
-                    range.end()
-                );
-        */
         range
             .rows()
             .filter(|row| row[0] != DataType::Empty)
@@ -40,6 +35,36 @@ impl SheetFormat for OtpFormat {
                     other_account: cell_to_string(&row[6]),
                     other_account_name: cell_to_string(&row[7]),
                     textual_date: parsed_date,
+                }
+            })
+            .collect()
+    }
+}
+
+fn is_float(dt: &DataType) -> bool {
+    match dt {
+        DataType::Float(_) => true,
+        _ => false,
+    }
+}
+
+impl SheetFormat for GranitFormat {
+    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+        range
+            .rows()
+            .filter(|row| is_float(&row[1]))
+            .map(|row| {
+                let date = cell_to_iso_date(&row[4]);
+                //println!("Row is {:?} -> {:?} from {:?}", row, date, row[4]);
+                ExternalTransaction {
+                    date: date,
+                    booking_date: None,
+                    amount: cell_to_float(&row[1]),
+                    category: cell_to_string(&row[6]),
+                    description: cell_to_string(&row[11]),
+                    other_account: cell_to_string(&row[8]).or_else(|| cell_to_string(&row[10])),
+                    other_account_name: cell_to_string(&row[7]).or_else(|| cell_to_string(&row[9])),
+                    textual_date: None,
                 }
             })
             .collect()

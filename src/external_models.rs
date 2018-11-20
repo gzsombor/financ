@@ -114,7 +114,7 @@ impl SheetDefinition {
         &mut self,
         sheet_name: &str,
         matching: Matching,
-        format: &SheetFormat,
+        format: &Box<SheetFormat>,
     ) -> ExternalTransactionList {
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
             println!("found sheet '{}'", &sheet_name);
