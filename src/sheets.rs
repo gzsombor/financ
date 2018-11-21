@@ -19,7 +19,11 @@ pub fn cell_to_iso_date(cell: &DataType) -> Option<NaiveDate> {
 
 pub fn cell_to_string(cell: &DataType) -> Option<String> {
     if let DataType::String(str) = cell {
-        Some(str.clone())
+        if str.is_empty() {
+            None
+        } else {
+            Some(str.clone())
+        }
     } else {
         None
     }

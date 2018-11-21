@@ -48,6 +48,30 @@ fn is_float(dt: &DataType) -> bool {
     }
 }
 
+fn concat(first: &Option<String>, second: &Option<String>) -> Option<String> {
+    match (first, second) {
+        (Some(f), Some(snd)) => {
+            let mut x = f.clone();
+            x.push(' ');
+            x.push_str(snd);
+            Some(x)
+        }
+        (Some(f), None) => Some(f.clone()),
+        (None, Some(f)) => Some(f.clone()),
+        (_, _) => None,
+    }
+}
+
+fn cleanup_string(input:&str) -> String {
+    let casefix = if input.to_uppercase() == input {
+        input.to_lowercase()
+    } else {
+        input.to_owned()
+    };
+    casefix.replace("A'","Á").replace("I'", "Í").replace("E'","É").replace("O'","Ó").replace("U'", "Ú").replace("U:", "Ü").replace("O:", "Ö")
+        .replace("a'","á").replace("i'", "í").replace("e'","é").replace("o'","ó").replace("u'", "ú").replace("u:", "ü").replace("o:", "ö")
+}
+
 impl SheetFormat for GranitFormat {
     fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
         range
@@ -55,15 +79,17 @@ impl SheetFormat for GranitFormat {
             .filter(|row| is_float(&row[1]))
             .map(|row| {
                 let date = cell_to_iso_date(&row[4]);
-                //println!("Row is {:?} -> {:?} from {:?}", row, date, row[4]);
+                let other_account_name =
+                    cell_to_string(&row[7]).or_else(|| cell_to_string(&row[9])).map(|name| cleanup_string(&name));
+                let comment = cell_to_string(&row[11]);
                 ExternalTransaction {
-                    date: date,
+                    date,
                     booking_date: None,
                     amount: cell_to_float(&row[1]),
                     category: cell_to_string(&row[6]),
-                    description: cell_to_string(&row[11]),
-                    other_account: cell_to_string(&row[8]).or_else(|| cell_to_string(&row[10])),
-                    other_account_name: cell_to_string(&row[7]).or_else(|| cell_to_string(&row[9])),
+                    description: concat(&other_account_name, &comment),
+                    other_account: cell_to_string(&row[8]),//.or_else(|| cell_to_string(&row[10])),
+                    other_account_name,
                     textual_date: None,
                 }
             })
