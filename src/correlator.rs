@@ -271,10 +271,10 @@ impl CorrelationCommand {
                     };
                     add_transactions.try_to_fix()?;
                 } else {
-                    println!("Unable to fix, as counter account is not specified exactly!");
+                    term.write_line(&format!("Unable to fix, as {} is not specified exactly!", style("counter account").red()))?;
                 }
             } else {
-                println!("No unmatched transac");
+                term.write_line(&format!("No unmatched transactions, everything is {}", style("ok.").green()))?;
             }
             Ok(unmatched_transactions.len())
         } else {
@@ -372,14 +372,14 @@ impl<'a> AddTransactions<'a> {
             &commodity,
             -amount,
         );
-        self.term.write_line(&format!(
+/*        self.term.write_line(&format!(
             "trans id:{} \n\t{} - {} \n\t{} - {}",
             tr_guid,
             self.only_account.name,
             split_id_from,
             self.counter_account.name,
             split_id_counter
-        ))?;
+        ))?;*/
         Ok(())
     }
 }
