@@ -89,6 +89,7 @@ impl TransactionQuery {
             Some(account) => self.move_splits(&connection, results, account, &term),
         }
     }
+
     fn display(&self, transactions: Vec<(Split, Transaction)>) -> io::Result<usize> {
         let len = transactions.len();
         println!("Displaying {} splits", len);
@@ -100,6 +101,7 @@ impl TransactionQuery {
         }
         Ok(len)
     }
+
     fn move_splits(
         &self,
         connection: &SqliteConnection,

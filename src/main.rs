@@ -274,8 +274,8 @@ fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
         term.write_line("Listing transactions")?;
         TransactionQuery::from(cmd)
     };
+    // term.write_line(&format!("Limit is {}", style(q.limit).red()))?;
     return q
-        .with_limit(100)
         .execute_and_process(&connection, &move_target_account, &term);
 }
 
