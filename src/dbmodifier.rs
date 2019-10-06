@@ -94,8 +94,6 @@ impl<'a> NewSplit<'a> {
         currency: &Commodities,
         amount: f64,
     ) -> String {
-        use schema::splits;
-
         let split_guid = format_guid(&GUID::rand().to_string());
         {
             let split =

@@ -39,13 +39,24 @@ pub fn extract_date(string: Option<String>) -> Option<NaiveDate> {
 }
 
 pub fn parse_sqlite_date(value: &Option<String>) -> Option<NaiveDateTime> {
-    value
-        .clone()
-        .and_then(|date_str| NaiveDateTime::parse_from_str(date_str.as_ref(), "%Y%m%d%H%M%S").ok())
+    value.as_ref()
+        .map(|date_str| parse_date_2_format(&date_str) )
+        .flatten()
+}
+
+fn parse_date_2_format(value: &str) -> Option<NaiveDateTime> {
+    if let Ok(ndt) = NaiveDateTime::parse_from_str(value, "%Y%m%d%H%M%S") {
+        Some(ndt)
+    } else if let Ok(ndt2) = NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S") {
+        Some(ndt2)
+    } else {
+        None
+    }
 }
 
 pub fn format_sqlite_date(ndt: &NaiveDateTime) -> String {
-    ndt.format("%Y%m%d%H%M%S").to_string()
+//    ndt.format("%Y%m%d%H%M%S").to_string()
+    ndt.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
 pub fn format_guid(guid: &str) -> String {

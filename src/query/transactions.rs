@@ -6,7 +6,7 @@ use console::{style, Term};
 use diesel::prelude::*;
 
 use models::{Account, Split, Transaction};
-use utils::to_date;
+use utils::{to_date, format_sqlite_date};
 
 pub struct TransactionQuery {
     pub limit: i64,
@@ -63,11 +63,11 @@ impl TransactionQuery {
             query = query.filter(description.like(format!("%{}%", description_txt)));
         }
         if let Some(after_date) = self.after_filter {
-            let after_as_txt = after_date.and_hms(0, 0, 0).format("%Y%m%d%H%M%S");
+            let after_as_txt = format_sqlite_date(&after_date.and_hms(0, 0, 0));
             query = query.filter(post_date.ge(after_as_txt.to_string()));
         }
         if let Some(before_date) = self.before_filter {
-            let before_as_txt = before_date.and_hms(23, 59, 59).format("%Y%m%d%H%M%S");
+            let before_as_txt = format_sqlite_date(&before_date.and_hms(23, 59, 59));
             query = query.filter(post_date.le(before_as_txt.to_string()));
         }
 
