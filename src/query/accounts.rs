@@ -1,7 +1,7 @@
 use clap::{App, Arg, ArgMatches};
 use diesel::prelude::*;
 
-use models::Account;
+use crate::models::Account;
 
 #[derive(Debug)]
 pub struct AccountQuery {
@@ -74,7 +74,7 @@ pub const TARGET_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
 
 impl AccountQuery {
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<Account> {
-        use schema::accounts::dsl::*;
+        use crate::schema::accounts::dsl::*;
 
         let mut query = accounts.into_boxed();
         if let Some(ref guid_txt) = self.guid_filter {

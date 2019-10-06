@@ -7,16 +7,16 @@ use console::{style, Key, Term};
 use diesel::prelude::*;
 use guid_create::GUID;
 
-use dbmodifier::{NewSplit, NewTransaction};
-use external_models::{
+use crate::dbmodifier::{NewSplit, NewTransaction};
+use crate::external_models::{
     ExternalTransaction, ExternalTransactionList, Matching, SheetDefinition, SheetFormat,
     TransactionPairing,
 };
-use models::{Account, Split, Transaction};
-use query::accounts::AccountQuery;
-use query::currencies::CommoditiesQuery;
-use query::transactions::TransactionQuery;
-use utils::{format_guid, to_string};
+use crate::models::{Account, Split, Transaction};
+use crate::query::accounts::AccountQuery;
+use crate::query::currencies::CommoditiesQuery;
+use crate::query::transactions::TransactionQuery;
+use crate::utils::{format_guid, to_string};
 
 pub struct CorrelationCommand {
     pub input_file: String,
@@ -43,7 +43,7 @@ impl TransactionCorrelator {
         account: String,
         matching: Matching,
         verbose: bool,
-        format: &Box<SheetFormat>,
+        format: &Box<dyn SheetFormat>,
     ) -> Self {
         let mut sheet_definition = SheetDefinition::new(input_file);
 
@@ -215,7 +215,7 @@ impl CorrelationCommand {
         &self,
         connection: &SqliteConnection,
         term: &Term,
-        format: &Box<SheetFormat>,
+        format: &Box<dyn SheetFormat>,
     ) -> io::Result<usize> {
         if let Some(only_account) = self.account_query.get_one(&connection, true) {
             let mut correlator = TransactionCorrelator::new(
@@ -362,7 +362,7 @@ impl<'a> AddTransactions<'a> {
             current_time,
             &description,
         );
-        let split_id_from = NewSplit::insert(
+        let _split_id_from = NewSplit::insert(
             &self.connection,
             &tr_guid,
             &self.only_account,
@@ -370,7 +370,7 @@ impl<'a> AddTransactions<'a> {
             &commodity,
             amount,
         );
-        let split_id_counter = NewSplit::insert(
+        let _split_id_counter = NewSplit::insert(
             &self.connection,
             &tr_guid,
             &self.counter_account,

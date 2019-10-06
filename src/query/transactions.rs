@@ -5,8 +5,8 @@ use clap::ArgMatches;
 use console::{style, Term};
 use diesel::prelude::*;
 
-use models::{Account, Split, Transaction};
-use utils::{to_date, format_sqlite_date};
+use crate::models::{Account, Split, Transaction};
+use crate::utils::{to_date, format_sqlite_date};
 
 pub struct TransactionQuery {
     pub limit: i64,
@@ -44,8 +44,8 @@ impl TransactionQuery {
     }
 
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<(Split, Transaction)> {
-        use schema::splits::dsl::*;
-        use schema::transactions::dsl::*;
+        use crate::schema::splits::dsl::*;
+        use crate::schema::transactions::dsl::*;
 
         let join = splits.inner_join(transactions);
 
@@ -109,7 +109,7 @@ impl TransactionQuery {
         target_account: &Account,
         term: &Term,
     ) -> io::Result<usize> {
-        use schema::splits::dsl::{account_guid, splits};
+        use crate::schema::splits::dsl::{account_guid, splits};
         let len = transactions.len();
         term.write_line(&format!(
             "Moving {} splits to {}",

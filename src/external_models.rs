@@ -4,7 +4,7 @@ use std::fmt;
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::NaiveDate;
 
-use models::{Split, Transaction};
+use crate::models::{Split, Transaction};
 
 #[derive(Debug, Clone)]
 pub struct ExternalTransaction {
@@ -114,7 +114,7 @@ impl SheetDefinition {
         &mut self,
         sheet_name: &str,
         matching: Matching,
-        format: &Box<SheetFormat>,
+        format: &Box<dyn SheetFormat>,
     ) -> ExternalTransactionList {
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
             println!("found sheet '{}'", &sheet_name);

@@ -3,7 +3,7 @@ use std::io;
 use clap::ArgMatches;
 use diesel::prelude::*;
 
-use models::Commodities;
+use crate::models::Commodities;
 
 pub struct CommoditiesQuery {
     pub limit: i64,
@@ -13,7 +13,7 @@ pub struct CommoditiesQuery {
 
 impl CommoditiesQuery {
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<Commodities> {
-        use schema::commodities::dsl::*;
+        use crate::schema::commodities::dsl::*;
 
         let mut query = commodities.into_boxed();
         if let Some(ref name_txt) = self.name_filter {
@@ -49,7 +49,7 @@ impl CommoditiesQuery {
     }
 
     pub fn get_by_guid(connection: &SqliteConnection, id: &str) -> Option<Commodities> {
-        use schema::commodities::dsl::*;
+        use crate::schema::commodities::dsl::*;
 
         commodities
             .filter(guid.eq(id))

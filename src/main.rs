@@ -30,13 +30,13 @@ use std::io;
 use clap::{App, AppSettings, Arg, ArgMatches, Shell, SubCommand};
 use console::{style, Term};
 
-use correlator::CorrelationCommand;
-use external_models::Matching;
-use formats::create_format;
-use query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS, TARGET_ACCOUNT_PARAMS};
-use query::currencies::CommoditiesQuery;
-use query::transactions::TransactionQuery;
-use utils::establish_connection;
+use crate::correlator::CorrelationCommand;
+use crate::external_models::Matching;
+use crate::formats::create_format;
+use crate::query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS, TARGET_ACCOUNT_PARAMS};
+use crate::query::currencies::CommoditiesQuery;
+use crate::query::transactions::TransactionQuery;
+use crate::utils::establish_connection;
 
 fn main() {
     let matches = build_cli().get_matches();
@@ -317,7 +317,7 @@ fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
     cmd.execute(&connection, &term, &format)
 }
 
-fn handle_completions(cmd: &ArgMatches) -> io::Result<usize> {
+fn handle_completions(_cmd: &ArgMatches) -> io::Result<usize> {
     build_cli().gen_completions("financ", Shell::Fish, ".");
     Ok(0)
 }
