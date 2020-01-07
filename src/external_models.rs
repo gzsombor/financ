@@ -31,13 +31,13 @@ impl fmt::Display for ExternalTransaction {
             f.write_str(" ----------")?;
         }
         if let Some(amount) = self.amount {
-            write!(f, " {}", amount);
+            write!(f, " {}", amount)?;
         }
         if let Some(category) = &self.category {
-            write!(f, " [{}]", category);
+            write!(f, " [{}]", category)?;
         }
         if let Some(description) = &self.description {
-            write!(f, " - {}", description);
+            write!(f, " - {}", description)?;
         }
         Ok(())
     }
