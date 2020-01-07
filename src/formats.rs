@@ -1,16 +1,18 @@
 use calamine::{DataType, Range};
 use crate::external_models::{ExternalTransaction, SheetFormat};
-use crate::sheets::{cell_to_date, cell_to_float, cell_to_iso_date, cell_to_string};
+use crate::sheets::{cell_to_date, cell_to_float, cell_to_iso_date, cell_to_german_date, cell_to_string};
 use crate::utils::extract_date;
 
 struct OtpFormat;
 struct GranitFormat;
+struct BankAustriaFormat;
 
 pub fn create_format(name: Option<String>) -> Option<Box<dyn SheetFormat>> {
     if let Some(format_name) = name {
         match format_name.to_lowercase().as_ref() {
             "otp" => Some(Box::new(OtpFormat {})),
             "granit" => Some(Box::new(GranitFormat {})),
+            "bankaustria" => Some(Box::new(BankAustriaFormat {})),
             _ => None,
         }
     } else {
@@ -108,6 +110,39 @@ impl SheetFormat for GranitFormat {
                     other_account_name,
                     textual_date: None,
                 }
+            })
+            .collect()
+    }
+}
+
+
+impl SheetFormat for BankAustriaFormat {
+    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+        range
+            .rows()
+            .skip(1)
+            .filter(|row| is_float(&row[6]))
+            .map(|row| {
+                let date = cell_to_german_date(&row[1]);
+                let booking_date = cell_to_german_date(&row[1]);
+                let amount = cell_to_float(&row[6]).unwrap();
+                let other_account = if amount < 0.0 {
+                    cell_to_string(&row[12])
+                } else {
+                    cell_to_string(&row[9])
+                };
+                let f = ExternalTransaction {
+                    date,
+                    booking_date,
+                    amount: Some(amount),
+                    category: None,
+                    description: cell_to_string(&row[3]).map(|s| s.trim().to_owned()),
+                    other_account: other_account,
+                    other_account_name: None,
+                    textual_date: None,
+                };
+                println!("transaction : {}", f);
+                f
             })
             .collect()
     }

@@ -2,16 +2,20 @@ use calamine::DataType;
 use chrono::NaiveDate;
 
 pub fn cell_to_date(cell: &DataType) -> Option<NaiveDate> {
-    if let DataType::String(str) = cell {
-        NaiveDate::parse_from_str(str, "%Y.%m.%d.").ok()
-    } else {
-        None
-    }
+    cell_to_date_raw(cell, "%Y.%m.%d.")
 }
 
 pub fn cell_to_iso_date(cell: &DataType) -> Option<NaiveDate> {
+    cell_to_date_raw(cell, "%Y-%m-%d")
+}
+
+pub fn cell_to_german_date(cell: &DataType) -> Option<NaiveDate> {
+    cell_to_date_raw(cell, "%d.%m.%Y")
+}
+
+pub fn cell_to_date_raw(cell: &DataType, format: &str) -> Option<NaiveDate> {
     if let DataType::String(str) = cell {
-        NaiveDate::parse_from_str(str, "%Y-%m-%d").ok()
+        NaiveDate::parse_from_str(str, &format).ok()
     } else {
         None
     }
