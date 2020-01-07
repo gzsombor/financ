@@ -118,8 +118,9 @@ impl SheetDefinition {
     ) -> ExternalTransactionList {
         let sheet_name = (match maybe_sheet_name {
             Some(name) => name,
-            None => &self.workbook.sheet_names()[0]
-        }).to_owned();
+            None => &self.workbook.sheet_names()[0],
+        })
+        .to_owned();
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
             println!("found sheet '{}'", sheet_name);
             let trans = format.parse_sheet(&sheet);

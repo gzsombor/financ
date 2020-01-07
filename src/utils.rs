@@ -39,8 +39,9 @@ pub fn extract_date(string: Option<String>) -> Option<NaiveDate> {
 }
 
 pub fn parse_sqlite_date(value: &Option<String>) -> Option<NaiveDateTime> {
-    value.as_ref()
-        .map(|date_str| parse_date_2_format(&date_str) )
+    value
+        .as_ref()
+        .map(|date_str| parse_date_2_format(&date_str))
         .flatten()
 }
 
@@ -55,7 +56,7 @@ fn parse_date_2_format(value: &str) -> Option<NaiveDateTime> {
 }
 
 pub fn format_sqlite_date(ndt: &NaiveDateTime) -> String {
-//    ndt.format("%Y%m%d%H%M%S").to_string()
+    //    ndt.format("%Y%m%d%H%M%S").to_string()
     ndt.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
@@ -122,5 +123,4 @@ mod tests {
             "3fc866136a98584fbb40eb0715b75429"
         );
     }
-
 }

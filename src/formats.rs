@@ -1,7 +1,9 @@
-use calamine::{DataType, Range};
 use crate::external_models::{ExternalTransaction, SheetFormat};
-use crate::sheets::{cell_to_date, cell_to_float, cell_to_iso_date, cell_to_german_date, cell_to_string};
+use crate::sheets::{
+    cell_to_date, cell_to_float, cell_to_german_date, cell_to_iso_date, cell_to_string,
+};
 use crate::utils::extract_date;
+use calamine::{DataType, Range};
 
 struct OtpFormat;
 struct GranitFormat;
@@ -114,7 +116,6 @@ impl SheetFormat for GranitFormat {
             .collect()
     }
 }
-
 
 impl SheetFormat for BankAustriaFormat {
     fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {

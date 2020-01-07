@@ -6,7 +6,7 @@ use console::{style, Term};
 use diesel::prelude::*;
 
 use crate::models::{Account, Split, Transaction};
-use crate::utils::{to_date, format_sqlite_date};
+use crate::utils::{format_sqlite_date, to_date};
 
 pub struct TransactionQuery {
     pub limit: i64,

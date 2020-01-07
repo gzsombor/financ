@@ -276,8 +276,7 @@ fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
         TransactionQuery::from(cmd)
     };
     // term.write_line(&format!("Limit is {}", style(q.limit).red()))?;
-    return q
-        .execute_and_process(&connection, &move_target_account, &term);
+    return q.execute_and_process(&connection, &move_target_account, &term);
 }
 
 fn handle_list_currencies(cmd: &ArgMatches) -> io::Result<usize> {
