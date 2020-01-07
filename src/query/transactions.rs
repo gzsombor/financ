@@ -33,7 +33,7 @@ impl TransactionQuery {
 
     pub fn with_limit(self, limit: i64) -> Self {
         TransactionQuery {
-            limit: limit,
+            limit,
             txid_filter: self.txid_filter,
             account_filter: self.account_filter,
             description_filter: self.description_filter,
@@ -64,11 +64,11 @@ impl TransactionQuery {
         }
         if let Some(after_date) = self.after_filter {
             let after_as_txt = format_sqlite_date(&after_date.and_hms(0, 0, 0));
-            query = query.filter(post_date.ge(after_as_txt.to_string()));
+            query = query.filter(post_date.ge(after_as_txt));
         }
         if let Some(before_date) = self.before_filter {
             let before_as_txt = format_sqlite_date(&before_date.and_hms(23, 59, 59));
-            query = query.filter(post_date.le(before_as_txt.to_string()));
+            query = query.filter(post_date.le(before_as_txt));
         }
 
         query

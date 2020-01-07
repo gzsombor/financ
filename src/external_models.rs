@@ -136,7 +136,7 @@ impl SheetDefinition {
         matching: Matching,
     ) -> (Option<NaiveDate>, Option<NaiveDate>) {
         transactions
-            .into_iter()
+            .iter()
             .fold((None, None), |(min, max), current| {
                 let maybe_current_date = current.get_matching_date(matching);
                 match maybe_current_date {

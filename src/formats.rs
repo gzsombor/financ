@@ -138,7 +138,7 @@ impl SheetFormat for BankAustriaFormat {
                     amount: Some(amount),
                     category: None,
                     description: cell_to_string(&row[3]).map(|s| s.trim().to_owned()),
-                    other_account: other_account,
+                    other_account,
                     other_account_name: None,
                     textual_date: None,
                 };
