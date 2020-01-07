@@ -20,7 +20,7 @@ use crate::utils::{format_guid, to_string};
 
 pub struct CorrelationCommand {
     pub input_file: String,
-    pub sheet_name: String,
+    pub sheet_name: Option<String>,
     pub matching: Matching,
     pub verbose: bool,
     pub list_extra_transactions: bool,
@@ -39,7 +39,7 @@ struct TransactionCorrelator {
 impl TransactionCorrelator {
     pub fn new(
         input_file: &str,
-        sheet_name: &str,
+        sheet_name: &Option<String>,
         account: String,
         matching: Matching,
         verbose: bool,
@@ -220,7 +220,7 @@ impl CorrelationCommand {
         if let Some(only_account) = self.account_query.get_one(&connection, true) {
             let mut correlator = TransactionCorrelator::new(
                 &self.input_file.clone(),
-                &self.sheet_name.clone(),
+                &self.sheet_name,
                 only_account.guid.clone(),
                 self.matching,
                 self.verbose,

@@ -112,12 +112,16 @@ impl SheetDefinition {
 
     pub fn load(
         &mut self,
-        sheet_name: &str,
+        maybe_sheet_name: &Option<String>,
         matching: Matching,
         format: &Box<dyn SheetFormat>,
     ) -> ExternalTransactionList {
+        let sheet_name = (match maybe_sheet_name {
+            Some(name) => name,
+            None => &self.workbook.sheet_names()[0]
+        }).to_owned();
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
-            println!("found sheet '{}'", &sheet_name);
+            println!("found sheet '{}'", sheet_name);
             let trans = format.parse_sheet(&sheet);
             let (min, max) = SheetDefinition::find_min_max(&trans, matching);
             ExternalTransactionList(trans, min, max)

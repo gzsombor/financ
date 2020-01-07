@@ -151,7 +151,7 @@ fn build_cli() -> App<'static, 'static> {
                                 .short("s")
                                 .long("sheet-name")
                                 .help("The name of the sheet")
-                                .required(true)
+                                .required(false)
                                 .takes_value(true),
                         )
                         .arg(
@@ -288,7 +288,7 @@ fn handle_list_currencies(cmd: &ArgMatches) -> io::Result<usize> {
 
 fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
     let input_file = value_t!(cmd, "input", String).unwrap();
-    let sheet_name = value_t!(cmd, "sheet_name", String).unwrap();
+    let sheet_name = value_t!(cmd, "sheet_name", String).ok();
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
     let counterparty_account_query = FROM_ACCOUNT_PARAMS.build(&cmd, None);
     let verbose = cmd.is_present("verbose");
