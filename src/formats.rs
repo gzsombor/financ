@@ -1,6 +1,6 @@
 use crate::external_models::{ExternalTransaction, SheetFormat};
 use crate::sheets::{
-    cell_to_date, cell_to_float, cell_to_german_date, cell_to_iso_date, cell_to_string,
+    cell_to_date, cell_to_float, cell_to_german_date, cell_to_english_date, cell_to_iso_date, cell_to_string,
 };
 use crate::utils::extract_date;
 use calamine::{DataType, Range};
@@ -8,6 +8,7 @@ use calamine::{DataType, Range};
 struct OtpFormat;
 struct GranitFormat;
 struct BankAustriaFormat;
+struct TransferwiseFormat;
 
 pub fn create_format(name: Option<String>) -> Option<Box<dyn SheetFormat>> {
     if let Some(format_name) = name {
@@ -15,6 +16,7 @@ pub fn create_format(name: Option<String>) -> Option<Box<dyn SheetFormat>> {
             "otp" => Some(Box::new(OtpFormat {})),
             "granit" => Some(Box::new(GranitFormat {})),
             "bankaustria" => Some(Box::new(BankAustriaFormat {})),
+            "transferwise" => Some(Box::new(TransferwiseFormat {})),
             _ => None,
         }
     } else {
@@ -146,3 +148,34 @@ impl SheetFormat for BankAustriaFormat {
             .collect()
     }
 }
+
+impl SheetFormat for TransferwiseFormat {
+    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+        range
+            .rows()
+            .skip(1)
+            //.filter(|row| is_float(&row[2]))
+            .map(|row| {
+                let date = cell_to_english_date(&row[1]);
+                let amount = cell_to_float(&row[2]).unwrap();
+                let other_account_name = cell_to_string(&row[13])
+                    .or_else(|| cell_to_string(&row[11]));
+                let other_account = cell_to_string(&row[12]);
+
+                let f = ExternalTransaction {
+                    date,
+                    booking_date: None,
+                    amount: Some(amount),
+                    category: None,
+                    description: cell_to_string(&row[4]).map(|s| s.trim().to_owned()),
+                    other_account,
+                    other_account_name,
+                    textual_date: None,
+                };
+                println!("{}", f);
+                f
+            })
+            .collect()
+    }
+}
+

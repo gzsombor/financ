@@ -1,16 +1,24 @@
 use calamine::DataType;
 use chrono::NaiveDate;
 
+// Format yyyy.mm.dd.
 pub fn cell_to_date(cell: &DataType) -> Option<NaiveDate> {
     cell_to_date_raw(cell, "%Y.%m.%d.")
 }
 
+// Format yyyy-mm-dd
 pub fn cell_to_iso_date(cell: &DataType) -> Option<NaiveDate> {
     cell_to_date_raw(cell, "%Y-%m-%d")
 }
 
+// Format dd.mm.yyyy
 pub fn cell_to_german_date(cell: &DataType) -> Option<NaiveDate> {
     cell_to_date_raw(cell, "%d.%m.%Y")
+}
+
+// Format dd-mm-yyyy
+pub fn cell_to_english_date(cell: &DataType) -> Option<NaiveDate> {
+    cell_to_date_raw(cell, "%d-%m-%Y")
 }
 
 pub fn cell_to_date_raw(cell: &DataType, format: &str) -> Option<NaiveDate> {
