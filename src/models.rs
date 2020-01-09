@@ -65,11 +65,17 @@ pub struct Commodities {
 
 impl Account {
     pub fn display(&self) {
-        let commodity = self.commodity_guid.clone().unwrap_or_else(|| "".to_owned());
         println!(
-            "[{}]<{}>({}) - {}",
-            self.account_type, self.guid, commodity, self.name
+            "[{}]<id= {}>(parent= {},commodity= {}) - {} {}",
+            self.account_type, self.guid, get_value(&self.parent_guid), get_value(&self.commodity_guid), self.name, get_value(&self.description)
         );
+    }
+}
+
+fn get_value(opt: &Option<String>) -> &str {
+    match opt {
+        Some(ref x) => x,
+        None => ""
     }
 }
 
