@@ -132,7 +132,7 @@ impl SheetFormat for BankAustriaFormat {
                 } else {
                     cell_to_string(&row[9])
                 };
-                let f = ExternalTransaction {
+                ExternalTransaction {
                     date,
                     booking_date,
                     amount: Some(amount),
@@ -141,9 +141,7 @@ impl SheetFormat for BankAustriaFormat {
                     other_account,
                     other_account_name: None,
                     textual_date: None,
-                };
-                println!("transaction : {}", f);
-                f
+                }
             })
             .collect()
     }
