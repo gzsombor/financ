@@ -18,6 +18,7 @@ pub struct ExternalTransaction {
     pub other_account: Option<String>,
     pub other_account_name: Option<String>,
     pub textual_date: Option<NaiveDate>,
+    pub transaction_fee: Option<f64>,
 }
 
 impl fmt::Display for ExternalTransaction {
@@ -34,6 +35,9 @@ impl fmt::Display for ExternalTransaction {
         }
         if let Some(amount) = self.amount {
             write!(f, " {}", amount)?;
+        }
+        if let Some(transaction_fee) = self.transaction_fee {
+            write!(f, " (fee: {})", transaction_fee)?;
         }
         if let Some(category) = &self.category {
             write!(f, " [{}]", category)?;

@@ -42,6 +42,7 @@ impl SheetFormat for OtpFormat {
                     other_account: cell_to_string(&row[6]),
                     other_account_name: cell_to_string(&row[7]),
                     textual_date: parsed_date,
+                    transaction_fee: None,
                 }
             })
             .collect()
@@ -114,6 +115,7 @@ impl SheetFormat for GranitFormat {
                     other_account: cell_to_string(&row[8]), //.or_else(|| cell_to_string(&row[10])),
                     other_account_name,
                     textual_date: None,
+                    transaction_fee: None,
                 }
             })
             .collect()
@@ -144,6 +146,7 @@ impl SheetFormat for BankAustriaFormat {
                     other_account,
                     other_account_name: None,
                     textual_date: None,
+                    transaction_fee: None,
                 }
             })
             .collect()
@@ -155,26 +158,25 @@ impl SheetFormat for TransferwiseFormat {
         range
             .rows()
             .skip(1)
-            //.filter(|row| is_float(&row[2]))
+            .filter(|row| is_float(&row[2]))
             .map(|row| {
                 let date = cell_to_english_date(&row[1]);
-                let amount = cell_to_float(&row[2]).unwrap();
+                let amount = cell_to_float(&row[2]);
                 let other_account_name =
                     cell_to_string(&row[13]).or_else(|| cell_to_string(&row[11]));
                 let other_account = cell_to_string(&row[12]);
 
-                let f = ExternalTransaction {
+                ExternalTransaction {
                     date,
                     booking_date: None,
-                    amount: Some(amount),
+                    amount: amount,
                     category: None,
                     description: cell_to_string(&row[4]).map(|s| s.trim().to_owned()),
                     other_account,
                     other_account_name,
                     textual_date: None,
-                };
-                println!("{}", f);
-                f
+                    transaction_fee: cell_to_float(&row[14]).filter(|value| value > &0.0),
+                }
             })
             .collect()
     }
