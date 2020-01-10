@@ -66,6 +66,14 @@ pub fn format_guid(guid: &str) -> String {
     lower
 }
 
+pub fn get_value_or_empty(opt: &Option<String>) -> &str {
+    match opt {
+        Some(ref x) => x,
+        None => "",
+    }
+}
+
+
 #[cfg(test)]
 mod tests {
     use super::*;

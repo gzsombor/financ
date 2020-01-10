@@ -33,7 +33,7 @@ use console::{style, Term};
 use crate::correlator::CorrelationCommand;
 use crate::external_models::Matching;
 use crate::formats::create_format;
-use crate::query::accounts::{DEFAULT_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS, TARGET_ACCOUNT_PARAMS};
+use crate::query::accounts::{DEFAULT_ACCOUNT_PARAMS, FEE_ACCOUNT_PARAMS, FROM_ACCOUNT_PARAMS, TARGET_ACCOUNT_PARAMS};
 use crate::query::currencies::CommoditiesQuery;
 use crate::query::transactions::TransactionQuery;
 use crate::utils::establish_connection;
@@ -138,6 +138,7 @@ fn build_cli() -> App<'static, 'static> {
         .subcommand(
             DEFAULT_ACCOUNT_PARAMS.add_arguments(
                 FROM_ACCOUNT_PARAMS.add_arguments(
+                    FEE_ACCOUNT_PARAMS.add_arguments(
                     SubCommand::with_name("correlate")
                         .arg(
                             Arg::with_name("input")
@@ -187,7 +188,7 @@ fn build_cli() -> App<'static, 'static> {
                                 .required(false)
                                 .takes_value(false),
                         ),
-                ),
+                ),),
             ),
         )
         .subcommand(
@@ -292,6 +293,7 @@ fn handle_correlate(cmd: &ArgMatches) -> Result<usize> {
     let sheet_name = value_t!(cmd, "sheet_name", String).ok();
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
     let counterparty_account_query = FROM_ACCOUNT_PARAMS.build(&cmd, None);
+    let fee_account_query = FEE_ACCOUNT_PARAMS.build(&cmd, None);
     let verbose = cmd.is_present("verbose");
     let format = value_t!(cmd, "format", String).ok();
 
@@ -312,6 +314,7 @@ fn handle_correlate(cmd: &ArgMatches) -> Result<usize> {
         list_extra_transactions,
         account_query,
         counterparty_account_query,
+        fee_account_query,
     };
     let format = create_format(&format)
         .with_context(|| format!("Unknown format:'{}'!", format.unwrap_or_default()))?;

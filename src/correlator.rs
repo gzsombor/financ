@@ -16,7 +16,7 @@ use crate::models::{Account, Split, Transaction};
 use crate::query::accounts::AccountQuery;
 use crate::query::currencies::CommoditiesQuery;
 use crate::query::transactions::TransactionQuery;
-use crate::utils::{format_guid, to_string};
+use crate::utils::{format_guid, get_value_or_empty, to_string};
 
 pub struct CorrelationCommand {
     pub input_file: String,
@@ -26,6 +26,7 @@ pub struct CorrelationCommand {
     pub list_extra_transactions: bool,
     pub account_query: AccountQuery,
     pub counterparty_account_query: AccountQuery,
+    pub fee_account_query: AccountQuery,
 }
 
 struct TransactionCorrelator {
@@ -208,6 +209,7 @@ struct AddTransactions<'a> {
     unmatched_transactions: &'a [ExternalTransaction],
     only_account: &'a Account,
     counter_account: &'a Account,
+    fee_account: &'a Option<Account>,
     term: &'a Term,
 }
 
@@ -261,6 +263,7 @@ impl CorrelationCommand {
             }
 
             if !unmatched_transactions.is_empty() {
+                let fee_account = self.fee_account_query.get_one(&connection, false);
                 if let Some(counter_account) =
                     self.counterparty_account_query.get_one(&connection, true)
                 {
@@ -269,6 +272,7 @@ impl CorrelationCommand {
                         unmatched_transactions: &unmatched_transactions,
                         only_account: &only_account,
                         counter_account: &counter_account,
+                        fee_account: &fee_account,
                         term: &term,
                     };
                     add_transactions.try_to_fix()?;
@@ -289,7 +293,7 @@ impl CorrelationCommand {
             }
             Ok(unmatched_transactions.len())
         } else {
-            Ok(0)
+            Err(anyhow!("Account is not specified exactly!"))
         }
     }
 }
@@ -314,6 +318,7 @@ impl<'a> AddTransactions<'a> {
         ))?;
         for idx in 0..self.unmatched_transactions.len() {
             let transaction = &self.unmatched_transactions[idx];
+            self.check_fee_configured(&transaction)?;
             self.term.write_line(&format!(
                 "Adding {} [{}es/{}o/{}bort/a{}l]",
                 style(&transaction).cyan(),
@@ -331,6 +336,8 @@ impl<'a> AddTransactions<'a> {
                 Answer::Abort => return Ok(()),
                 Answer::All => {
                     for current in idx..self.unmatched_transactions.len() {
+                        let transaction = &self.unmatched_transactions[idx];
+                        self.check_fee_configured(&transaction)?;
                         self.add_transaction(&self.unmatched_transactions[current])?;
                     }
                     return Ok(());
@@ -338,6 +345,15 @@ impl<'a> AddTransactions<'a> {
             };
         }
         Ok(())
+    }
+
+    fn check_fee_configured(&self, transaction: &ExternalTransaction) -> Result<()> {
+        match (transaction.transaction_fee, self.fee_account) {
+            (Some(fee), None) =>
+                Err(anyhow!("Transaction({}) has a fee({}), however no fee account specified!",
+                    get_value_or_empty(&transaction.description), fee)),
+            _ => Ok(())
+        }
     }
 
     fn add_transaction(&self, transaction: &ExternalTransaction) -> Result<()> {

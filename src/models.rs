@@ -3,7 +3,7 @@ use std::fmt;
 use chrono::NaiveDateTime;
 
 use crate::schema::{accounts, splits, transactions};
-use crate::utils::parse_sqlite_date;
+use crate::utils::{get_value_or_empty, parse_sqlite_date};
 
 joinable!(splits -> transactions (tx_guid));
 joinable!(splits -> accounts (account_guid));
@@ -69,18 +69,11 @@ impl Account {
             "[{}]<id= {}>(parent= {},commodity= {}) - {} {}",
             self.account_type,
             self.guid,
-            get_value(&self.parent_guid),
-            get_value(&self.commodity_guid),
+            get_value_or_empty(&self.parent_guid),
+            get_value_or_empty(&self.commodity_guid),
             self.name,
-            get_value(&self.description)
+            get_value_or_empty(&self.description)
         );
-    }
-}
-
-fn get_value(opt: &Option<String>) -> &str {
-    match opt {
-        Some(ref x) => x,
-        None => "",
     }
 }
 

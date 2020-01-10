@@ -74,6 +74,21 @@ pub const TARGET_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
     type_name_short: "T",
 };
 
+pub const FEE_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
+    name: "fee_name",
+    name_long: "fee-account-name",
+    name_short: "E",
+    parent_guid: "fee_parent_guid",
+    parent_guid_long: "fee-account-parent",
+    parent_guid_short: "R",
+    guid: "fee_guid",
+    guid_long: "fee-account-guid",
+    guid_short: "U",
+    type_name: "fee_type",
+    type_name_long: "fee-account-type",
+    type_name_short: "Y",
+};
+
 impl AccountQuery {
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<Account> {
         use crate::schema::accounts::dsl::*;
