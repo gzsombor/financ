@@ -1,6 +1,7 @@
 use crate::external_models::{ExternalTransaction, SheetFormat};
 use crate::sheets::{
-    cell_to_date, cell_to_float, cell_to_german_date, cell_to_english_date, cell_to_iso_date, cell_to_string,
+    cell_to_date, cell_to_english_date, cell_to_float, cell_to_german_date, cell_to_iso_date,
+    cell_to_string,
 };
 use crate::utils::extract_date;
 use calamine::{DataType, Range};
@@ -10,8 +11,8 @@ struct GranitFormat;
 struct BankAustriaFormat;
 struct TransferwiseFormat;
 
-pub fn create_format(name: Option<String>) -> Option<Box<dyn SheetFormat>> {
-    if let Some(format_name) = name {
+pub fn create_format(name: &Option<String>) -> Option<Box<dyn SheetFormat>> {
+    if let Some(ref format_name) = name {
         match format_name.to_lowercase().as_ref() {
             "otp" => Some(Box::new(OtpFormat {})),
             "granit" => Some(Box::new(GranitFormat {})),
@@ -158,8 +159,8 @@ impl SheetFormat for TransferwiseFormat {
             .map(|row| {
                 let date = cell_to_english_date(&row[1]);
                 let amount = cell_to_float(&row[2]).unwrap();
-                let other_account_name = cell_to_string(&row[13])
-                    .or_else(|| cell_to_string(&row[11]));
+                let other_account_name =
+                    cell_to_string(&row[13]).or_else(|| cell_to_string(&row[11]));
                 let other_account = cell_to_string(&row[12]);
 
                 let f = ExternalTransaction {
@@ -178,4 +179,3 @@ impl SheetFormat for TransferwiseFormat {
             .collect()
     }
 }
-

@@ -1,5 +1,4 @@
-use std::io;
-
+use anyhow::Result;
 use chrono::naive::NaiveDate;
 use clap::ArgMatches;
 use console::{style, Term};
@@ -82,7 +81,7 @@ impl TransactionQuery {
         connection: &SqliteConnection,
         target_account: &Option<Account>,
         term: &Term,
-    ) -> io::Result<usize> {
+    ) -> Result<usize> {
         let results = self.execute(&connection);
         match target_account {
             None => self.display(results),
@@ -90,7 +89,7 @@ impl TransactionQuery {
         }
     }
 
-    fn display(&self, transactions: Vec<(Split, Transaction)>) -> io::Result<usize> {
+    fn display(&self, transactions: Vec<(Split, Transaction)>) -> Result<usize> {
         let len = transactions.len();
         println!("Displaying {} splits", len);
         for (split, tx) in transactions {
@@ -108,7 +107,7 @@ impl TransactionQuery {
         transactions: Vec<(Split, Transaction)>,
         target_account: &Account,
         term: &Term,
-    ) -> io::Result<usize> {
+    ) -> Result<usize> {
         use crate::schema::splits::dsl::{account_guid, splits};
         let len = transactions.len();
         term.write_line(&format!(

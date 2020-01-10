@@ -67,7 +67,12 @@ impl Account {
     pub fn display(&self) {
         println!(
             "[{}]<id= {}>(parent= {},commodity= {}) - {} {}",
-            self.account_type, self.guid, get_value(&self.parent_guid), get_value(&self.commodity_guid), self.name, get_value(&self.description)
+            self.account_type,
+            self.guid,
+            get_value(&self.parent_guid),
+            get_value(&self.commodity_guid),
+            self.name,
+            get_value(&self.description)
         );
     }
 }
@@ -75,7 +80,7 @@ impl Account {
 fn get_value(opt: &Option<String>) -> &str {
     match opt {
         Some(ref x) => x,
-        None => ""
+        None => "",
     }
 }
 

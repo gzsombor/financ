@@ -19,6 +19,7 @@ regex = "1"
 lazy_static = "1.4.0"
 console = "0.9.1"
 guid-create = "0.1.1"
+anyhow = "1.0"
 
 #[patch.crates-io]
 #calamine = { path = "../calamine" }

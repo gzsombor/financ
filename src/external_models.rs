@@ -1,8 +1,10 @@
 use std::cell::RefCell;
 use std::fmt;
 
+use anyhow::Result;
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::NaiveDate;
+use console::{style, Term};
 
 use crate::models::{Split, Transaction};
 
@@ -102,12 +104,12 @@ pub trait SheetFormat {
 }
 
 impl SheetDefinition {
-    pub fn new(input_file: &str) -> Self {
-        let workbook = open_workbook_auto(&input_file).expect("Cannot open file");
-        SheetDefinition {
+    pub fn new(input_file: &str) -> Result<Self> {
+        let workbook = open_workbook_auto(&input_file)?; //.expect("Cannot open file");
+        Ok(SheetDefinition {
             // input_file,
             workbook,
-        }
+        })
     }
 
     pub fn load(
@@ -115,19 +117,27 @@ impl SheetDefinition {
         maybe_sheet_name: &Option<String>,
         matching: Matching,
         format: &Box<dyn SheetFormat>,
-    ) -> ExternalTransactionList {
+        term: &Term,
+    ) -> Result<ExternalTransactionList> {
         let sheet_name = (match maybe_sheet_name {
             Some(name) => name,
             None => &self.workbook.sheet_names()[0],
         })
         .to_owned();
         if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
-            println!("found sheet '{}'", sheet_name);
+            term.write_line(&format!("found sheet '{}'", style(sheet_name).blue()))?;
             let trans = format.parse_sheet(&sheet);
             let (min, max) = SheetDefinition::find_min_max(&trans, matching);
-            ExternalTransactionList(trans, min, max)
+            Ok(ExternalTransactionList(trans, min, max))
         } else {
-            ExternalTransactionList(Vec::new(), None, None)
+            term.write_line(&format!(
+                "Sheet '{}' not found, no transactions will be imported!",
+                style(&sheet_name).red()
+            ))?;
+            Err(anyhow!(
+                "Sheet '{}' not found, no transactions will be imported!",
+                sheet_name
+            ))
         }
     }
 

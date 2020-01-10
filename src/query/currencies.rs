@@ -1,5 +1,4 @@
-use std::io;
-
+use anyhow::Result;
 use clap::ArgMatches;
 use diesel::prelude::*;
 
@@ -38,7 +37,7 @@ impl CommoditiesQuery {
             commodity_map
         }
     */
-    pub fn execute_and_display(&self, connection: &SqliteConnection) -> io::Result<usize> {
+    pub fn execute_and_display(&self, connection: &SqliteConnection) -> Result<usize> {
         let results = self.execute(&connection);
         println!("Displaying {} commodities", results.len());
         let len = results.len();

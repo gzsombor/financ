@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
-use std::io;
 use std::ops::Bound::Included;
 
+use anyhow::Result;
 use chrono::{Duration, Local, NaiveDate};
 use console::{style, Key, Term};
 use diesel::prelude::*;
@@ -44,17 +44,18 @@ impl TransactionCorrelator {
         matching: Matching,
         verbose: bool,
         format: &Box<dyn SheetFormat>,
-    ) -> Self {
-        let mut sheet_definition = SheetDefinition::new(input_file);
+        term: &Term,
+    ) -> Result<Self> {
+        let mut sheet_definition = SheetDefinition::new(input_file)?;
 
-        let external_transactions = sheet_definition.load(&sheet_name, matching, format);
-        TransactionCorrelator {
+        let external_transactions = sheet_definition.load(&sheet_name, matching, format, &term)?;
+        Ok(TransactionCorrelator {
             external_transactions,
             account,
             matching,
             transaction_map: BTreeMap::new(),
             verbose,
-        }
+        })
     }
 
     fn load_from_database(&self, connection: &SqliteConnection) -> Vec<(Split, Transaction)> {
@@ -216,7 +217,7 @@ impl CorrelationCommand {
         connection: &SqliteConnection,
         term: &Term,
         format: &Box<dyn SheetFormat>,
-    ) -> io::Result<usize> {
+    ) -> Result<usize> {
         if let Some(only_account) = self.account_query.get_one(&connection, true) {
             let mut correlator = TransactionCorrelator::new(
                 &self.input_file.clone(),
@@ -225,7 +226,8 @@ impl CorrelationCommand {
                 self.matching,
                 self.verbose,
                 format,
-            );
+                &term,
+            )?;
             correlator.build_mapping(connection);
 
             term.write_line(&format!(
@@ -275,6 +277,9 @@ impl CorrelationCommand {
                         "Unable to fix, as {} is not specified exactly!",
                         style("counter account").red()
                     ))?;
+                    return Err(anyhow!(
+                        "Unable to fix, as account is not specified exactly!"
+                    ));
                 }
             } else {
                 term.write_line(&format!(
@@ -290,16 +295,17 @@ impl CorrelationCommand {
 }
 
 impl<'a> AddTransactions<'a> {
-    fn try_to_fix(&self) -> io::Result<()> {
+    fn try_to_fix(&self) -> Result<()> {
         if self.only_account.commodity_guid != self.counter_account.commodity_guid {
             self.term.write_line(&format!(
                 "The two account has different commodities, unable to transfer between: {} - {}",
                 style(self.only_account).red(),
                 style(self.counter_account).red()
             ))?;
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Different commodities!",
+            return Err(anyhow!(
+                "Unable to fix, the two account has different commodities: {} - {}!",
+                self.only_account,
+                self.counter_account
             ));
         }
         self.term.write_line(&format!(
@@ -334,7 +340,7 @@ impl<'a> AddTransactions<'a> {
         Ok(())
     }
 
-    fn add_transaction(&self, transaction: &ExternalTransaction) -> io::Result<()> {
+    fn add_transaction(&self, transaction: &ExternalTransaction) -> Result<()> {
         self.term
             .write_line(&format!("adding {}", style(&transaction).red()))?;
         let commodity_guid = &self
@@ -391,7 +397,7 @@ impl<'a> AddTransactions<'a> {
 }
 
 impl Answer {
-    fn get(term: &Term) -> io::Result<Answer> {
+    fn get(term: &Term) -> Result<Answer> {
         loop {
             let key = term.read_key()?;
             match key {

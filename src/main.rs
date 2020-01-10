@@ -12,6 +12,8 @@ extern crate console;
 extern crate guid_create;
 extern crate regex;
 #[macro_use]
+extern crate anyhow;
+#[macro_use]
 extern crate lazy_static;
 
 pub mod correlator;
@@ -24,8 +26,7 @@ pub mod schema;
 mod sheets;
 pub mod utils;
 
-use std::io;
-
+use anyhow::{Context, Result};
 use clap::{App, AppSettings, Arg, ArgMatches, Shell, SubCommand};
 use console::{style, Term};
 
@@ -221,14 +222,14 @@ fn build_cli() -> App<'static, 'static> {
         .setting(AppSettings::ArgRequiredElseHelp)
 }
 
-fn handle_list_accounts(ls_acc_cmd: &ArgMatches) -> io::Result<usize> {
+fn handle_list_accounts(ls_acc_cmd: &ArgMatches) -> Result<usize> {
     let connection = establish_connection();
     let q = DEFAULT_ACCOUNT_PARAMS.build(ls_acc_cmd, Some("limit"));
     q.execute_and_display(&connection);
     Ok(0)
 }
 
-fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
+fn handle_list_entries(cmd: &ArgMatches) -> Result<usize> {
     let term = Term::stdout();
 
     let connection = establish_connection();
@@ -240,11 +241,11 @@ fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
         if target_account.is_none() {
             term.write_line(&format!(
                 "Unable to determine the target account for the move-split command:{:?}",
-                style(target_account_query).red()
+                style(&target_account_query).red()
             ))?;
-            return Err(io::Error::new(
-                io::ErrorKind::Other,
-                "Target account missing",
+            return Err(anyhow!(
+                "Target account missing, command: {}!",
+                &target_account_query
             ));
         }
         target_account
@@ -256,12 +257,13 @@ fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
             if target_account.commodity_guid != account.commodity_guid {
                 term.write_line(&format!(
                     "The two account has different commodities, unable to transfer between: {} - {}",
-                    style(account).red(),
+                    style(&account).red(),
                     style(target_account).red()
                 ))?;
-                return Err(io::Error::new(
-                    io::ErrorKind::Other,
-                    "Different commodities!",
+                return Err(anyhow!(
+                    "Different commodities: from account={} target account={}!",
+                    &account,
+                    target_account
                 ));
             }
         }
@@ -279,14 +281,14 @@ fn handle_list_entries(cmd: &ArgMatches) -> io::Result<usize> {
     return q.execute_and_process(&connection, &move_target_account, &term);
 }
 
-fn handle_list_currencies(cmd: &ArgMatches) -> io::Result<usize> {
+fn handle_list_currencies(cmd: &ArgMatches) -> Result<usize> {
     let connection = establish_connection();
     let q = CommoditiesQuery::from(cmd);
     q.execute_and_display(&connection)
 }
 
-fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
-    let input_file = value_t!(cmd, "input", String).unwrap();
+fn handle_correlate(cmd: &ArgMatches) -> Result<usize> {
+    let input_file = value_t!(cmd, "input", String).with_context(|| "Missing input parameter!")?;
     let sheet_name = value_t!(cmd, "sheet_name", String).ok();
     let account_query = DEFAULT_ACCOUNT_PARAMS.build(&cmd, None);
     let counterparty_account_query = FROM_ACCOUNT_PARAMS.build(&cmd, None);
@@ -311,11 +313,12 @@ fn handle_correlate(cmd: &ArgMatches) -> io::Result<usize> {
         account_query,
         counterparty_account_query,
     };
-    let format = create_format(format).expect("Unknown format");
+    let format = create_format(&format)
+        .with_context(|| format!("Unknown format:'{}'!", format.unwrap_or_default()))?;
     cmd.execute(&connection, &term, &format)
 }
 
-fn handle_completions(_cmd: &ArgMatches) -> io::Result<usize> {
+fn handle_completions(_cmd: &ArgMatches) -> Result<usize> {
     build_cli().gen_completions("financ", Shell::Fish, ".");
     Ok(0)
 }

@@ -1,3 +1,5 @@
+use std::fmt;
+
 use clap::{App, Arg, ArgMatches};
 use diesel::prelude::*;
 
@@ -175,5 +177,29 @@ impl AccountQueryCli {
             parent_filter,
             type_filter,
         }
+    }
+}
+
+impl fmt::Display for AccountQuery {
+    // This trait requires `fmt` with this exact signature.
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // Write strictly the first element into the supplied output
+        // stream: `f`. Returns `fmt::Result` which indicates whether the
+        // operation succeeded or failed. Note that `write!` uses syntax which
+        // is very similar to `println!`.
+        write!(f, "limit:{}", self.limit)?;
+        if let Some(ref name_filter) = self.name_filter {
+            write!(f, " name-filter:{}", name_filter)?;
+        }
+        if let Some(ref guid_filter) = self.guid_filter {
+            write!(f, " guid-filter:{}", guid_filter)?;
+        }
+        if let Some(ref parent_filter) = self.parent_filter {
+            write!(f, " parent-filter:{}", parent_filter)?;
+        }
+        if let Some(ref type_filter) = self.type_filter {
+            write!(f, " type-filter:{}", type_filter)?;
+        }
+        Ok(())
     }
 }
