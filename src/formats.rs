@@ -175,7 +175,7 @@ impl SheetFormat for TransferwiseFormat {
                     other_account,
                     other_account_name,
                     textual_date: None,
-                    transaction_fee: cell_to_float(&row[14]).filter(|value| value > &0.0),
+                    transaction_fee: cell_to_float(&row[14]).filter(|value| *value > 0.0),
                 }
             })
             .collect()

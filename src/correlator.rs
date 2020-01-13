@@ -349,7 +349,7 @@ impl<'a> AddTransactions<'a> {
 
     fn check_fee_configured(&self, transaction: &ExternalTransaction) -> Result<()> {
         match (transaction.transaction_fee, self.fee_account) {
-            (Some(fee), None) =>
+            (Some(fee), None) if fee != 0.0 =>
                 Err(anyhow!("Transaction({}) has a fee({}), however no fee account specified!",
                     get_value_or_empty(&transaction.description), fee)),
             _ => Ok(())
@@ -376,6 +376,8 @@ impl<'a> AddTransactions<'a> {
             .unwrap_or_else(|| "".to_owned());
         let amount = transaction.get_amount().expect("Amount is expected!");
 
+        let fee_value = &transaction.transaction_fee.unwrap_or_default();
+
         NewTransaction::insert(
             &self.connection,
             &tr_guid,
@@ -398,8 +400,18 @@ impl<'a> AddTransactions<'a> {
             &self.counter_account,
             &transaction.get_other_account_desc(),
             &commodity,
-            -amount,
+            -amount - fee_value,
         );
+        if *fee_value != 0.0 {
+            let _fee_id_counter = NewSplit::insert(
+                &self.connection,
+                &tr_guid,
+                &self.fee_account.as_ref().expect("Fee account is expected!"),
+                &description,
+                &commodity,
+                *fee_value
+            );
+        }
         /*        self.term.write_line(&format!(
             "trans id:{} \n\t{} - {} \n\t{} - {}",
             tr_guid,
