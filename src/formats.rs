@@ -1,12 +1,13 @@
 use crate::external_models::{ExternalTransaction, SheetFormat};
 use crate::sheets::{
     cell_to_date, cell_to_english_date, cell_to_float, cell_to_german_date, cell_to_iso_date,
-    cell_to_string,
+    cell_to_string, cell_to_datetime
 };
 use crate::utils::extract_date;
 use calamine::{DataType, Range};
 
 struct OtpFormat;
+struct OtpFormat2020;
 struct GranitFormat;
 struct BankAustriaFormat;
 struct TransferwiseFormat;
@@ -15,6 +16,7 @@ pub fn create_format(name: &Option<String>) -> Option<Box<dyn SheetFormat>> {
     if let Some(ref format_name) = name {
         match format_name.to_lowercase().as_ref() {
             "otp" => Some(Box::new(OtpFormat {})),
+            "otp2020" => Some(Box::new(OtpFormat2020 {})),
             "granit" => Some(Box::new(GranitFormat {})),
             "bankaustria" => Some(Box::new(BankAustriaFormat {})),
             "transferwise" => Some(Box::new(TransferwiseFormat {})),
@@ -32,7 +34,7 @@ impl SheetFormat for OtpFormat {
             .filter(|row| row[0] != DataType::Empty)
             .map(|row| {
                 let descrip = cell_to_string(&row[8]);
-                let parsed_date = extract_date(descrip.clone());
+                let parsed_date = extract_date(&descrip);
                 ExternalTransaction {
                     date: cell_to_date(&row[2]),
                     booking_date: cell_to_date(&row[3]),
@@ -44,6 +46,32 @@ impl SheetFormat for OtpFormat {
                     textual_date: parsed_date,
                     transaction_fee: None,
                 }
+            })
+            .collect()
+    }
+}
+
+impl SheetFormat for OtpFormat2020 {
+    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+        range
+            .rows()
+            .filter(|row| row[0] != DataType::Empty)
+            .map(|row| {
+                let spend_date = cell_to_datetime(&row[2]);
+                let descrip = cell_to_string(&row[7]);
+                let parsed_date = extract_date(&descrip);
+                let transaction = ExternalTransaction {
+                    date: spend_date.map(|datetime| datetime.date()),
+                    booking_date: cell_to_date(&row[3]),
+                    amount: cell_to_float(&row[4]),
+                    category: cell_to_string(&row[1]),
+                    description: descrip,
+                    other_account: cell_to_string(&row[5]),
+                    other_account_name: cell_to_string(&row[6]),
+                    textual_date: parsed_date,
+                    transaction_fee: None,
+                };
+                transaction
             })
             .collect()
     }

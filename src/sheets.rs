@@ -1,5 +1,5 @@
 use calamine::DataType;
-use chrono::NaiveDate;
+use chrono::{NaiveDate, NaiveDateTime};
 
 // Format yyyy.mm.dd.
 pub fn cell_to_date(cell: &DataType) -> Option<NaiveDate> {
@@ -24,6 +24,14 @@ pub fn cell_to_english_date(cell: &DataType) -> Option<NaiveDate> {
 pub fn cell_to_date_raw(cell: &DataType, format: &str) -> Option<NaiveDate> {
     if let DataType::String(str) = cell {
         NaiveDate::parse_from_str(str, &format).ok()
+    } else {
+        None
+    }
+}
+
+pub fn cell_to_datetime(cell: &DataType) -> Option<NaiveDateTime> {
+    if let DataType::String(str) = cell {
+        NaiveDateTime::parse_from_str(str, "%Y.%m.%d. %H:%M:%S").ok()
     } else {
         None
     }

@@ -20,11 +20,11 @@ pub fn to_string(date: Option<NaiveDate>) -> String {
     date.map_or_else(|| "".to_string(), |dt| dt.format("%Y-%m-%d").to_string())
 }
 
-pub fn extract_date(string: Option<String>) -> Option<NaiveDate> {
+pub fn extract_date(string: &Option<String>) -> Option<NaiveDate> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"(\d{4})\.(\d{2})\.(\d{2})").unwrap();
     }
-    string.and_then(|str| {
+    string.as_ref().map(|str| {
         let caps = RE.captures(&str)?;
         let year = caps.get(1).unwrap().as_str();
         let month = caps.get(2).unwrap().as_str();
@@ -35,7 +35,7 @@ pub fn extract_date(string: Option<String>) -> Option<NaiveDate> {
             month.parse().expect("Number as month"),
             day.parse().expect("Number as day"),
         ))
-    })
+    }).flatten()
 }
 
 pub fn parse_sqlite_date(value: &Option<String>) -> Option<NaiveDateTime> {
