@@ -11,6 +11,7 @@ struct OtpFormat2020;
 struct GranitFormat;
 struct BankAustriaFormat;
 struct TransferwiseFormat;
+struct MagnetFormat;
 
 pub fn create_format(name: &Option<String>) -> Option<Box<dyn SheetFormat>> {
     if let Some(ref format_name) = name {
@@ -20,6 +21,7 @@ pub fn create_format(name: &Option<String>) -> Option<Box<dyn SheetFormat>> {
             "granit" => Some(Box::new(GranitFormat {})),
             "bankaustria" => Some(Box::new(BankAustriaFormat {})),
             "transferwise" => Some(Box::new(TransferwiseFormat {})),
+            "magnet" => Some(Box::new(MagnetFormat {})),
             _ => None,
         }
     } else {
@@ -205,6 +207,38 @@ impl SheetFormat for TransferwiseFormat {
                     textual_date: None,
                     transaction_fee: cell_to_float(&row[14]).filter(|value| *value > 0.0),
                 }
+            })
+            .collect()
+    }
+}
+
+
+impl SheetFormat for MagnetFormat {
+    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+        range
+            .rows()
+            .skip(1)
+            .filter(|row| is_float(&row[6]))
+            .map(|row| {
+                let date = cell_to_date(&row[1]);
+                let booking_date = cell_to_date(&row[2]);
+                let amount = cell_to_float(&row[6]);
+                let other_account = cell_to_string(&row[4]);
+                let other_account_name = cell_to_string(&row[3]);
+                let description = cell_to_string(&row[5]);
+
+                let transaction = ExternalTransaction {
+                    date: date,
+                    booking_date: booking_date,
+                    amount: amount,
+                    category: None,
+                    description: concat(&other_account_name, &description),
+                    other_account,
+                    other_account_name,
+                    textual_date: None,
+                    transaction_fee: None,
+                };
+                transaction
             })
             .collect()
     }
