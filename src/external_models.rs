@@ -1,4 +1,5 @@
-use std::cell::RefCell;
+use std::fs::File;
+use std::{cell::RefCell, io::BufReader};
 use std::fmt;
 
 use anyhow::Result;
@@ -100,7 +101,7 @@ pub struct ExternalTransactionList(
 
 pub struct SheetDefinition {
     //    input_file: String,
-    workbook: Sheets,
+    workbook: Sheets<BufReader<File>>,
 }
 
 pub trait SheetFormat {
@@ -123,12 +124,14 @@ impl SheetDefinition {
         format: &Box<dyn SheetFormat>,
         term: &Term,
     ) -> Result<ExternalTransactionList> {
-        let sheet_name = (match maybe_sheet_name {
-            Some(name) => name,
-            None => &self.workbook.sheet_names()[0],
-        })
-        .to_owned();
-        if let Some(Ok(sheet)) = self.workbook.worksheet_range(&sheet_name) {
+        let sheet_name = match maybe_sheet_name {
+            Some(name) => name.to_owned(),
+            None => {
+                let sheet_names = self.workbook.sheet_names();
+                sheet_names.first().unwrap().to_owned()
+            }
+        };
+        if let Ok(sheet) = self.workbook.worksheet_range(&sheet_name) {
             term.write_line(&format!("found sheet '{}'", style(sheet_name).blue()))?;
             let trans = format.parse_sheet(&sheet);
             let (min, max) = SheetDefinition::find_min_max(&trans, matching);

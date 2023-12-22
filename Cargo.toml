@@ -11,14 +11,14 @@ description = "Tool to inspect and modify GnuCash files, and correlate with exte
 
 [dependencies]
 diesel = { version = "1.4.2", features = ["sqlite"] }
-dotenv = "0.10"
+dotenv = "0.15"
 clap = "2.32.0"
 chrono = "0.4.10"
-calamine = "0.16.1"
+calamine = "0.23"
 regex = "1"
 lazy_static = "1.4.0"
-console = "0.9.1"
-guid-create = "0.1.1"
+console = "0.15"
+guid-create = "0.3"
 anyhow = "1.0"
 
 #[patch.crates-io]
