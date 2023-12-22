@@ -70,10 +70,10 @@ impl TransactionQuery {
         target_account: &Option<Account>,
         term: &Term,
     ) -> Result<usize> {
-        let results = self.execute(&connection);
+        let results = self.execute(connection);
         match target_account {
             None => self.display(results),
-            Some(account) => self.move_splits(&connection, results, account, &term),
+            Some(account) => self.move_splits(connection, results, account, term),
         }
     }
 

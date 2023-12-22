@@ -108,7 +108,7 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
         TransactionQuery::from(args)
     };
     // term.write_line(&format!("Limit is {}", style(q.limit).red()))?;
-    return q.execute_and_process(&connection, &move_target_account, &term);
+    q.execute_and_process(&connection, &move_target_account, &term)
 }
 
 fn handle_commodities(cmd: CommoditiesArgs) -> Result<usize> {

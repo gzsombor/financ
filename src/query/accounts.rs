@@ -93,7 +93,7 @@ impl AccountQuery {
     }
 
     pub fn execute_and_display(&self, connection: &SqliteConnection) {
-        let results = self.execute(&connection);
+        let results = self.execute(connection);
         println!("Displaying {} accounts", results.len());
         for account in results {
             account.display();
@@ -101,7 +101,7 @@ impl AccountQuery {
     }
 
     pub fn get_one(&self, connection: &SqliteConnection, show_warning: bool) -> Option<Account> {
-        let mut account_list = self.execute(&connection);
+        let mut account_list = self.execute(connection);
         if account_list.len() != 1 {
             if show_warning {
                 println!(

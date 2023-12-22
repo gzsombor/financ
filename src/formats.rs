@@ -60,30 +60,26 @@ impl SheetFormat for OtpFormat2020 {
             .filter(|row| row[0] != DataType::Empty)
             .map(|row| {
                 let spend_date = cell_to_datetime(&row[2]);
-                let descrip = cell_to_string(&row[7]);
-                let parsed_date = extract_date(&descrip);
-                let transaction = ExternalTransaction {
+                let description = cell_to_string(&row[7]);
+                let parsed_date = extract_date(&description);
+                ExternalTransaction {
                     date: spend_date.map(|datetime| datetime.date()),
                     booking_date: cell_to_date(&row[3]),
                     amount: cell_to_float(&row[4]),
                     category: cell_to_string(&row[1]),
-                    description: descrip,
+                    description,
                     other_account: cell_to_string(&row[5]),
                     other_account_name: cell_to_string(&row[6]),
                     textual_date: parsed_date,
                     transaction_fee: None,
-                };
-                transaction
+                }
             })
             .collect()
     }
 }
 
 fn is_float(dt: &DataType) -> bool {
-    match dt {
-        DataType::Float(_) => true,
-        _ => false,
-    }
+    matches!(dt, DataType::Float(_))
 }
 
 fn concat(first: &Option<String>, second: &Option<String>) -> Option<String> {
@@ -199,7 +195,7 @@ impl SheetFormat for TransferwiseFormat {
                 ExternalTransaction {
                     date,
                     booking_date: None,
-                    amount: amount,
+                    amount,
                     category: None,
                     description: cell_to_string(&row[4]).map(|s| s.trim().to_owned()),
                     other_account,
@@ -226,18 +222,17 @@ impl SheetFormat for MagnetFormat {
                 let other_account_name = cell_to_string(&row[3]);
                 let description = cell_to_string(&row[5]);
 
-                let transaction = ExternalTransaction {
-                    date: date,
-                    booking_date: booking_date,
-                    amount: amount,
+                ExternalTransaction {
+                    date,
+                    booking_date,
+                    amount,
                     category: None,
                     description: concat(&other_account_name, &description),
                     other_account,
                     other_account_name,
                     textual_date: None,
                     transaction_fee: None,
-                };
-                transaction
+                }
             })
             .collect()
     }

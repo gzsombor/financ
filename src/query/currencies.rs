@@ -37,7 +37,7 @@ impl CommoditiesQuery {
         }
     */
     pub fn execute_and_display(&self, connection: &SqliteConnection) -> Result<usize> {
-        let results = self.execute(&connection);
+        let results = self.execute(connection);
         println!("Displaying {} commodities", results.len());
         let len = results.len();
         for commodity in results {
@@ -58,7 +58,7 @@ impl CommoditiesQuery {
     }
 }
 
-impl<'a> From<CommoditiesArgs> for CommoditiesQuery {
+impl From<CommoditiesArgs> for CommoditiesQuery {
     fn from(args: CommoditiesArgs) -> Self {
         CommoditiesQuery {
             limit: args.limit.unwrap_or(10),

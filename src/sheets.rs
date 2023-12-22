@@ -23,7 +23,7 @@ pub fn cell_to_english_date(cell: &DataType) -> Option<NaiveDate> {
 
 pub fn cell_to_date_raw(cell: &DataType, format: &str) -> Option<NaiveDate> {
     if let DataType::String(str) = cell {
-        NaiveDate::parse_from_str(str, &format).ok()
+        NaiveDate::parse_from_str(str, format).ok()
     } else {
         None
     }

@@ -49,7 +49,7 @@ impl TransactionCorrelator {
     ) -> Result<Self> {
         let mut sheet_definition = SheetDefinition::new(input_file)?;
 
-        let external_transactions = sheet_definition.load(&sheet_name, matching, format, &term)?;
+        let external_transactions = sheet_definition.load(sheet_name, matching, format, term)?;
         Ok(TransactionCorrelator {
             external_transactions,
             account,
@@ -69,7 +69,7 @@ impl TransactionCorrelator {
             before_filter: None,
             after_filter: None,
         };
-        let db_rows = db_query.execute(&connection);
+        let db_rows = db_query.execute(connection);
         if self.verbose {
             println!("Number of transactions in the database: {}", db_rows.len());
         }
@@ -85,14 +85,14 @@ impl TransactionCorrelator {
     }
 
     fn build_mapping(&mut self, connection: &SqliteConnection) {
-        let db_transactions = self.load_from_database(&connection);
+        let db_transactions = self.load_from_database(connection);
 
         for row in db_transactions {
             if let Some(posting_date) = row.1.posting().map(|date_time| date_time.date()) {
                 let list = self
                     .transaction_map
                     .entry(posting_date)
-                    .or_insert_with(Vec::new);
+                    .or_default();
                 list.push(TransactionPairing::new(row));
             }
         }
@@ -109,8 +109,7 @@ impl TransactionCorrelator {
                 return self
                     .transaction_map
                     .range((Included(min_value), Included(max_value)))
-                    .map(|(_, v)| v)
-                    .flatten()
+                    .flat_map(|(_, v)| v)
                     .filter(|pairing| pairing.is_not_matched())
                     .collect();
             }
@@ -159,7 +158,7 @@ impl TransactionCorrelator {
         let mut result = Vec::new();
         for external_transaction in transactions {
             if self
-                .add_transaction(delta_day, &external_transaction)
+                .add_transaction(delta_day, external_transaction)
                 .is_none()
             {
                 result.push(external_transaction.clone());
@@ -187,7 +186,7 @@ impl TransactionCorrelator {
                         .find(|&x| x.is_equal_amount(ext_amount) && x.is_not_matched())
                     {
                         tr_pairing.pair_with(external_transaction);
-                        return Some(&tr_pairing);
+                        return Some(tr_pairing);
                     }
                 }
             }
@@ -220,7 +219,7 @@ impl CorrelationCommand {
         term: &Term,
         format: &Box<dyn SheetFormat>,
     ) -> Result<usize> {
-        if let Some(only_account) = self.account_query.get_one(&connection, true) {
+        if let Some(only_account) = self.account_query.get_one(connection, true) {
             let mut correlator = TransactionCorrelator::new(
                 &self.input_file.clone(),
                 &self.sheet_name,
@@ -228,7 +227,7 @@ impl CorrelationCommand {
                 self.matching,
                 self.verbose,
                 format,
-                &term,
+                term,
             )?;
             correlator.build_mapping(connection);
 
@@ -263,17 +262,17 @@ impl CorrelationCommand {
             }
 
             if !unmatched_transactions.is_empty() {
-                let fee_account = self.fee_account_query.get_one(&connection, false);
+                let fee_account = self.fee_account_query.get_one(connection, false);
                 if let Some(counter_account) =
-                    self.counterparty_account_query.get_one(&connection, true)
+                    self.counterparty_account_query.get_one(connection, true)
                 {
                     let add_transactions = AddTransactions {
-                        connection: &connection,
+                        connection,
                         unmatched_transactions: &unmatched_transactions,
                         only_account: &only_account,
                         counter_account: &counter_account,
                         fee_account: &fee_account,
-                        term: &term,
+                        term,
                     };
                     add_transactions.try_to_fix()?;
                 } else {
@@ -318,7 +317,7 @@ impl<'a> AddTransactions<'a> {
         ))?;
         for idx in 0..self.unmatched_transactions.len() {
             let transaction = &self.unmatched_transactions[idx];
-            self.check_fee_configured(&transaction)?;
+            self.check_fee_configured(transaction)?;
             self.term.write_line(&format!(
                 "Adding {} [{}es/{}o/{}bort/a{}l]",
                 style(&transaction).cyan(),
@@ -327,9 +326,9 @@ impl<'a> AddTransactions<'a> {
                 style("A").red(),
                 style("L").red()
             ))?;
-            let answer = Answer::get(&self.term)?;
+            let answer = Answer::get(self.term)?;
             match answer {
-                Answer::Yes => self.add_transaction(&transaction)?,
+                Answer::Yes => self.add_transaction(transaction)?,
                 Answer::No => self
                     .term
                     .write_line(&format!("Skipping {}", style(&transaction).magenta()))?,
@@ -337,7 +336,7 @@ impl<'a> AddTransactions<'a> {
                 Answer::All => {
                     for current in idx..self.unmatched_transactions.len() {
                         let transaction = &self.unmatched_transactions[idx];
-                        self.check_fee_configured(&transaction)?;
+                        self.check_fee_configured(transaction)?;
                         self.add_transaction(&self.unmatched_transactions[current])?;
                     }
                     return Ok(());
@@ -366,7 +365,7 @@ impl<'a> AddTransactions<'a> {
             .commodity_guid
             .clone()
             .expect("Commodity guid is not null");
-        let commodity = CommoditiesQuery::get_by_guid(&self.connection, &commodity_guid)
+        let commodity = CommoditiesQuery::get_by_guid(self.connection, commodity_guid)
             .expect("Currency not found!");
         let tr_guid = format_guid(&GUID::rand().to_string());
         let spend_date = transaction
@@ -381,7 +380,7 @@ impl<'a> AddTransactions<'a> {
         let fee_value = &transaction.transaction_fee.unwrap_or_default();
 
         NewTransaction::insert(
-            &self.connection,
+            self.connection,
             &tr_guid,
             &commodity.guid,
             spend_date,
@@ -389,26 +388,26 @@ impl<'a> AddTransactions<'a> {
             &description,
         );
         let _split_id_from = NewSplit::insert(
-            &self.connection,
+            self.connection,
             &tr_guid,
-            &self.only_account,
+            self.only_account,
             &description,
             &commodity,
             amount,
         );
         let _split_id_counter = NewSplit::insert(
-            &self.connection,
+            self.connection,
             &tr_guid,
-            &self.counter_account,
+            self.counter_account,
             &transaction.get_other_account_desc(),
             &commodity,
             -amount - fee_value,
         );
         if *fee_value != 0.0 {
             let _fee_id_counter = NewSplit::insert(
-                &self.connection,
+                self.connection,
                 &tr_guid,
-                &self.fee_account.as_ref().expect("Fee account is expected!"),
+                self.fee_account.as_ref().expect("Fee account is expected!"),
                 &description,
                 &commodity,
                 *fee_value,

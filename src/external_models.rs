@@ -82,7 +82,7 @@ impl ExternalTransaction {
             (Some(acc), Some(name)) => {
                 let mut res = acc.clone();
                 res.push_str(" - ");
-                res.push_str(&name);
+                res.push_str(name);
                 res
             }
             (None, Some(name)) => name.clone(),
@@ -110,7 +110,7 @@ pub trait SheetFormat {
 
 impl SheetDefinition {
     pub fn new(input_file: &str) -> Result<Self> {
-        let workbook = open_workbook_auto(&input_file)?; //.expect("Cannot open file");
+        let workbook = open_workbook_auto(input_file)?; //.expect("Cannot open file");
         Ok(SheetDefinition {
             // input_file,
             workbook,

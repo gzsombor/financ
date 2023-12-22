@@ -26,8 +26,8 @@ pub fn extract_date(string: &Option<String>) -> Option<NaiveDate> {
     }
     string
         .as_ref()
-        .map(|str| {
-            let caps = RE.captures(&str)?;
+        .and_then(|str| {
+            let caps = RE.captures(str)?;
             let year = caps.get(1).unwrap().as_str();
             let month = caps.get(2).unwrap().as_str();
             let day = caps.get(3).unwrap().as_str();
@@ -38,14 +38,12 @@ pub fn extract_date(string: &Option<String>) -> Option<NaiveDate> {
                 day.parse().expect("Number as day"),
             ))
         })
-        .flatten()
 }
 
 pub fn parse_sqlite_date(value: &Option<String>) -> Option<NaiveDateTime> {
     value
         .as_ref()
-        .map(|date_str| parse_date_2_format(&date_str))
-        .flatten()
+        .and_then(|date_str| parse_date_2_format(date_str))
 }
 
 fn parse_date_2_format(value: &str) -> Option<NaiveDateTime> {
