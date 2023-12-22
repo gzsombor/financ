@@ -1,7 +1,7 @@
 use anyhow::Result;
 use diesel::prelude::*;
 
-use crate::{models::Commodities, cli::CommoditiesArgs};
+use crate::{cli::CommoditiesArgs, models::Commodities};
 
 pub struct CommoditiesQuery {
     pub limit: i64,

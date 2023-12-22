@@ -30,18 +30,6 @@ impl TransactionQuery {
         }
     }
 
-    pub fn with_limit(self, limit: i64) -> Self {
-        TransactionQuery {
-            limit,
-            txid_filter: self.txid_filter,
-            account_filter: self.account_filter,
-            description_filter: self.description_filter,
-            memo_filter: self.memo_filter,
-            before_filter: self.before_filter,
-            after_filter: self.after_filter,
-        }
-    }
-
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<(Split, Transaction)> {
         use crate::schema::splits::dsl::*;
         use crate::schema::transactions::dsl::*;
@@ -132,10 +120,10 @@ impl TransactionQuery {
 impl From<TransactionsArgs> for TransactionQuery {
     fn from(args: TransactionsArgs) -> Self {
         TransactionQuery {
-            limit : args.limit.unwrap_or(10),
-            txid_filter : args.txid,
+            limit: args.limit.unwrap_or(10),
+            txid_filter: args.txid,
             account_filter: None,
-            description_filter : args.description,
+            description_filter: args.description,
             memo_filter: args.memo,
             before_filter: to_date(args.before),
             after_filter: to_date(args.after),

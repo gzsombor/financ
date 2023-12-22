@@ -2,7 +2,10 @@ use std::fmt;
 
 use diesel::prelude::*;
 
-use crate::{models::Account, cli::{DefaultAccountParams, TargetAccountParams, FeeAccountParams, FromAccountParams}};
+use crate::{
+    cli::{DefaultAccountParams, FeeAccountParams, FromAccountParams, TargetAccountParams},
+    models::Account,
+};
 
 #[derive(Debug)]
 pub struct AccountQuery {
@@ -21,10 +24,10 @@ impl ToAccountQuery for DefaultAccountParams {
     fn build(&self, limit: Option<i64>) -> AccountQuery {
         AccountQuery {
             limit: limit.unwrap_or(10),
-            guid_filter : self.guid.clone(),
-            name_filter : self.name.clone(),
-            parent_filter : self.parent_guid.clone(),
-            type_filter : self.account_type.clone(),
+            guid_filter: self.guid.clone(),
+            name_filter: self.name.clone(),
+            parent_filter: self.parent_guid.clone(),
+            type_filter: self.account_type.clone(),
         }
     }
 }
@@ -33,10 +36,10 @@ impl ToAccountQuery for TargetAccountParams {
     fn build(&self, limit: Option<i64>) -> AccountQuery {
         AccountQuery {
             limit: limit.unwrap_or(10),
-            guid_filter : self.guid.clone(),
-            name_filter : self.name.clone(),
-            parent_filter : self.parent_guid.clone(),
-            type_filter : self.account_type.clone(),
+            guid_filter: self.guid.clone(),
+            name_filter: self.name.clone(),
+            parent_filter: self.parent_guid.clone(),
+            type_filter: self.account_type.clone(),
         }
     }
 }
@@ -45,10 +48,10 @@ impl ToAccountQuery for FromAccountParams {
     fn build(&self, limit: Option<i64>) -> AccountQuery {
         AccountQuery {
             limit: limit.unwrap_or(10),
-            guid_filter : self.guid.clone(),
-            name_filter : self.name.clone(),
-            parent_filter : self.parent_guid.clone(),
-            type_filter : self.account_type.clone(),
+            guid_filter: self.guid.clone(),
+            name_filter: self.name.clone(),
+            parent_filter: self.parent_guid.clone(),
+            type_filter: self.account_type.clone(),
         }
     }
 }
@@ -57,14 +60,13 @@ impl ToAccountQuery for FeeAccountParams {
     fn build(&self, limit: Option<i64>) -> AccountQuery {
         AccountQuery {
             limit: limit.unwrap_or(10),
-            guid_filter : self.guid.clone(),
-            name_filter : self.name.clone(),
-            parent_filter : self.parent_guid.clone(),
-            type_filter : self.account_type.clone(),
+            guid_filter: self.guid.clone(),
+            name_filter: self.name.clone(),
+            parent_filter: self.parent_guid.clone(),
+            type_filter: self.account_type.clone(),
         }
     }
 }
-
 
 impl AccountQuery {
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<Account> {
@@ -115,7 +117,6 @@ impl AccountQuery {
         account_list.pop()
     }
 }
-
 
 impl fmt::Display for AccountQuery {
     // This trait requires `fmt` with this exact signature.

@@ -1,7 +1,7 @@
 use crate::external_models::{ExternalTransaction, SheetFormat};
 use crate::sheets::{
-    cell_to_date, cell_to_english_date, cell_to_float, cell_to_german_date, cell_to_iso_date,
-    cell_to_string, cell_to_datetime
+    cell_to_date, cell_to_datetime, cell_to_english_date, cell_to_float, cell_to_german_date,
+    cell_to_iso_date, cell_to_string,
 };
 use crate::utils::extract_date;
 use calamine::{DataType, Range};
@@ -211,7 +211,6 @@ impl SheetFormat for TransferwiseFormat {
             .collect()
     }
 }
-
 
 impl SheetFormat for MagnetFormat {
     fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {

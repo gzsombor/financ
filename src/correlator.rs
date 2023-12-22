@@ -349,10 +349,12 @@ impl<'a> AddTransactions<'a> {
 
     fn check_fee_configured(&self, transaction: &ExternalTransaction) -> Result<()> {
         match (transaction.transaction_fee, self.fee_account) {
-            (Some(fee), None) if fee != 0.0 =>
-                Err(anyhow!("Transaction({}) has a fee({}), however no fee account specified!",
-                    get_value_or_empty(&transaction.description), fee)),
-            _ => Ok(())
+            (Some(fee), None) if fee != 0.0 => Err(anyhow!(
+                "Transaction({}) has a fee({}), however no fee account specified!",
+                get_value_or_empty(&transaction.description),
+                fee
+            )),
+            _ => Ok(()),
         }
     }
 
@@ -409,7 +411,7 @@ impl<'a> AddTransactions<'a> {
                 &self.fee_account.as_ref().expect("Fee account is expected!"),
                 &description,
                 &commodity,
-                *fee_value
+                *fee_value,
             );
         }
         /*        self.term.write_line(&format!(

@@ -16,6 +16,7 @@ extern crate anyhow;
 #[macro_use]
 extern crate lazy_static;
 
+mod cli;
 pub mod correlator;
 mod dbmodifier;
 mod external_models;
@@ -24,22 +25,21 @@ pub mod models;
 mod query;
 pub mod schema;
 mod sheets;
-mod cli;
 pub mod utils;
 
 use anyhow::{Context, Result};
-use clap::{Parser, Arg, ArgMatches};
-use cli::{Commands, DefaultAccountParams, ListAccountsArgs, TransactionsArgs, CommoditiesArgs, CorrelateArgs};
+use clap::Parser;
+use cli::{Commands, CommoditiesArgs, CorrelateArgs, ListAccountsArgs, TransactionsArgs};
 use console::{style, Term};
 
+use crate::cli::Cli;
 use crate::correlator::CorrelationCommand;
 use crate::external_models::Matching;
 use crate::formats::create_format;
+use crate::query::accounts::ToAccountQuery;
 use crate::query::currencies::CommoditiesQuery;
 use crate::query::transactions::TransactionQuery;
 use crate::utils::establish_connection;
-use crate::cli::Cli;
-use crate::query::accounts::ToAccountQuery;
 
 fn main() {
     let cli = Cli::parse();
@@ -52,7 +52,6 @@ fn main() {
     }
     .unwrap();
 }
-
 
 fn handle_list_accounts(args: ListAccountsArgs) -> Result<usize> {
     let connection = establish_connection();
@@ -142,16 +141,4 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
     let format = create_format(&format)
         .with_context(|| format!("Unknown format:'{}'!", format.unwrap_or_default()))?;
     cmd.execute(&connection, &term, &format)
-}
-
-// fn handle_completions(_cmd: &ArgMatches) -> Result<usize> {
-//     build_cli().gen_completions("financ", Shell::Fish, ".");
-//     Ok(0)
-// }
-
-fn is_a_number(v: String) -> Result<(), String> {
-    match v.parse::<i64>() {
-        Ok(_) => Ok(()),
-        Err(_) => Err(format!("Value '{}' is not a number!", v)),
-    }
 }

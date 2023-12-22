@@ -1,6 +1,6 @@
+use std::fmt;
 use std::fs::File;
 use std::{cell::RefCell, io::BufReader};
-use std::fmt;
 
 use anyhow::Result;
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};

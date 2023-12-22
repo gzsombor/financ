@@ -12,8 +12,8 @@ pub(crate) struct Cli {
 pub(crate) enum Commands {
     ListAccounts(ListAccountsArgs),
     Transactions(TransactionsArgs),
-    Correlate (CorrelateArgs),
-    Commodities(CommoditiesArgs)
+    Correlate(CorrelateArgs),
+    Commodities(CommoditiesArgs),
 }
 
 #[derive(Args)]
@@ -51,7 +51,7 @@ pub struct TransactionsArgs {
     // Splits with the given description
     #[arg(long = "description", short = 'd')]
     pub description: Option<String>,
-    
+
     // Move the found splits to the target account
     #[arg(long = "move-split", short = 'm')]
     pub move_split: bool,
@@ -116,7 +116,6 @@ pub struct CommoditiesArgs {
     pub limit: Option<i64>,
 }
 
-
 #[derive(Args)]
 pub struct DefaultAccountParams {
     #[arg(long = "account-name", short = 'n')]
@@ -164,4 +163,3 @@ pub struct FromAccountParams {
     #[arg(long = "from-account-type", short = 'T')]
     pub account_type: Option<String>,
 }
-
