@@ -1,9 +1,9 @@
 use anyhow::Result;
 use chrono::naive::NaiveDate;
-use clap::ArgMatches;
 use console::{style, Term};
 use diesel::prelude::*;
 
+use crate::cli::TransactionsArgs;
 use crate::models::{Account, Split, Transaction};
 use crate::utils::{format_sqlite_date, to_date};
 
@@ -129,22 +129,16 @@ impl TransactionQuery {
     }
 }
 
-impl<'a> From<&'a ArgMatches<'a>> for TransactionQuery {
-    fn from(entries_cmd: &ArgMatches) -> Self {
-        let limit = value_t!(entries_cmd, "limit", i64).unwrap_or(10);
-        let txid_filter = value_t!(entries_cmd, "txid", String).ok();
-        let description_filter = value_t!(entries_cmd, "description", String).ok();
-        let memo_filter = value_t!(entries_cmd, "memo", String).ok();
-        let before_filter = to_date(value_t!(entries_cmd, "before", String).ok());
-        let after_filter = to_date(value_t!(entries_cmd, "after", String).ok());
+impl From<TransactionsArgs> for TransactionQuery {
+    fn from(args: TransactionsArgs) -> Self {
         TransactionQuery {
-            limit,
-            txid_filter,
+            limit : args.limit.unwrap_or(10),
+            txid_filter : args.txid,
             account_filter: None,
-            description_filter,
-            memo_filter,
-            before_filter,
-            after_filter,
+            description_filter : args.description,
+            memo_filter: args.memo,
+            before_filter: to_date(args.before),
+            after_filter: to_date(args.after),
         }
     }
 }

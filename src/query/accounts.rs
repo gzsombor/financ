@@ -1,9 +1,8 @@
 use std::fmt;
 
-use clap::{App, Arg, ArgMatches};
 use diesel::prelude::*;
 
-use crate::models::Account;
+use crate::{models::Account, cli::{DefaultAccountParams, TargetAccountParams, FeeAccountParams, FromAccountParams}};
 
 #[derive(Debug)]
 pub struct AccountQuery {
@@ -14,80 +13,58 @@ pub struct AccountQuery {
     pub type_filter: Option<String>,
 }
 
-pub struct AccountQueryCli {
-    name: &'static str,
-    name_long: &'static str,
-    name_short: &'static str,
-    parent_guid: &'static str,
-    parent_guid_long: &'static str,
-    parent_guid_short: &'static str,
-    guid: &'static str,
-    guid_long: &'static str,
-    guid_short: &'static str,
-    type_name: &'static str,
-    type_name_long: &'static str,
-    type_name_short: &'static str,
+pub(crate) trait ToAccountQuery {
+    fn build(&self, limit: Option<i64>) -> AccountQuery;
 }
 
-pub const DEFAULT_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
-    name: "name",
-    name_long: "account-name",
-    name_short: "n",
-    parent_guid: "parent_guid",
-    parent_guid_long: "account-parent",
-    parent_guid_short: "p",
-    guid: "guid",
-    guid_long: "account-guid",
-    guid_short: "g",
-    type_name: "type",
-    type_name_long: "account-type",
-    type_name_short: "t",
-};
+impl ToAccountQuery for DefaultAccountParams {
+    fn build(&self, limit: Option<i64>) -> AccountQuery {
+        AccountQuery {
+            limit: limit.unwrap_or(10),
+            guid_filter : self.guid.clone(),
+            name_filter : self.name.clone(),
+            parent_filter : self.parent_guid.clone(),
+            type_filter : self.account_type.clone(),
+        }
+    }
+}
 
-pub const FROM_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
-    name: "from_name",
-    name_long: "from-account-name",
-    name_short: "N",
-    parent_guid: "from_parent_guid",
-    parent_guid_long: "from-account-parent",
-    parent_guid_short: "P",
-    guid: "from_guid",
-    guid_long: "from-account-guid",
-    guid_short: "G",
-    type_name: "from_type",
-    type_name_long: "from-account-type",
-    type_name_short: "T",
-};
+impl ToAccountQuery for TargetAccountParams {
+    fn build(&self, limit: Option<i64>) -> AccountQuery {
+        AccountQuery {
+            limit: limit.unwrap_or(10),
+            guid_filter : self.guid.clone(),
+            name_filter : self.name.clone(),
+            parent_filter : self.parent_guid.clone(),
+            type_filter : self.account_type.clone(),
+        }
+    }
+}
 
-pub const TARGET_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
-    name: "target_name",
-    name_long: "target-account-name",
-    name_short: "r",
-    parent_guid: "target_parent_guid",
-    parent_guid_long: "target-account-parent",
-    parent_guid_short: "P",
-    guid: "target_guid",
-    guid_long: "target-account-guid",
-    guid_short: "G",
-    type_name: "target_type",
-    type_name_long: "target-account-type",
-    type_name_short: "T",
-};
+impl ToAccountQuery for FromAccountParams {
+    fn build(&self, limit: Option<i64>) -> AccountQuery {
+        AccountQuery {
+            limit: limit.unwrap_or(10),
+            guid_filter : self.guid.clone(),
+            name_filter : self.name.clone(),
+            parent_filter : self.parent_guid.clone(),
+            type_filter : self.account_type.clone(),
+        }
+    }
+}
 
-pub const FEE_ACCOUNT_PARAMS: AccountQueryCli = AccountQueryCli {
-    name: "fee_name",
-    name_long: "fee-account-name",
-    name_short: "E",
-    parent_guid: "fee_parent_guid",
-    parent_guid_long: "fee-account-parent",
-    parent_guid_short: "R",
-    guid: "fee_guid",
-    guid_long: "fee-account-guid",
-    guid_short: "U",
-    type_name: "fee_type",
-    type_name_long: "fee-account-type",
-    type_name_short: "Y",
-};
+impl ToAccountQuery for FeeAccountParams {
+    fn build(&self, limit: Option<i64>) -> AccountQuery {
+        AccountQuery {
+            limit: limit.unwrap_or(10),
+            guid_filter : self.guid.clone(),
+            name_filter : self.name.clone(),
+            parent_filter : self.parent_guid.clone(),
+            type_filter : self.account_type.clone(),
+        }
+    }
+}
+
 
 impl AccountQuery {
     pub fn execute(&self, connection: &SqliteConnection) -> Vec<Account> {
@@ -139,61 +116,6 @@ impl AccountQuery {
     }
 }
 
-impl AccountQueryCli {
-    pub fn add_arguments<'a, 'b>(&self, app: App<'a, 'b>) -> App<'a, 'b> {
-        app.arg(
-            Arg::with_name(self.name)
-                .short(self.name_short)
-                .long(self.name_long)
-                .help("Limit to accounts which name contains the specified string")
-                .required(false)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name(self.parent_guid)
-                .short(self.parent_guid_short)
-                .long(self.parent_guid_long)
-                .help("Filter to the childs accounts of the given account")
-                .required(false)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name(self.guid)
-                .short(self.guid_short)
-                .long(self.guid_long)
-                .help("Filter by guid")
-                .required(false)
-                .takes_value(true),
-        )
-        .arg(
-            Arg::with_name(self.type_name)
-                .short(self.type_name_short)
-                .long(self.type_name_long)
-                .help("Limit to specified account types")
-                .required(false)
-                .takes_value(true),
-        )
-    }
-
-    pub fn build(&self, ls_acc_cmd: &ArgMatches, limit_param: Option<&str>) -> AccountQuery {
-        let limit = if let Some(limit) = limit_param {
-            value_t!(ls_acc_cmd, limit, i64).unwrap_or(10)
-        } else {
-            10
-        };
-        let name_filter = value_t!(ls_acc_cmd, self.name, String).ok();
-        let guid_filter = value_t!(ls_acc_cmd, self.guid, String).ok();
-        let parent_filter = value_t!(ls_acc_cmd, self.parent_guid, String).ok();
-        let type_filter = value_t!(ls_acc_cmd, self.type_name, String).ok();
-        AccountQuery {
-            limit,
-            guid_filter,
-            name_filter,
-            parent_filter,
-            type_filter,
-        }
-    }
-}
 
 impl fmt::Display for AccountQuery {
     // This trait requires `fmt` with this exact signature.

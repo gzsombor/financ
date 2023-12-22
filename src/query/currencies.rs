@@ -1,8 +1,7 @@
 use anyhow::Result;
-use clap::ArgMatches;
 use diesel::prelude::*;
 
-use crate::models::Commodities;
+use crate::{models::Commodities, cli::CommoditiesArgs};
 
 pub struct CommoditiesQuery {
     pub limit: i64,
@@ -59,15 +58,12 @@ impl CommoditiesQuery {
     }
 }
 
-impl<'a> From<&'a ArgMatches<'a>> for CommoditiesQuery {
-    fn from(ls_acc_cmd: &ArgMatches) -> Self {
-        let limit = value_t!(ls_acc_cmd, "limit", i64).unwrap_or(10);
-        let name_filter = value_t!(ls_acc_cmd, "name", String).ok();
-        let type_filter = value_t!(ls_acc_cmd, "commodity-type", String).ok();
+impl<'a> From<CommoditiesArgs> for CommoditiesQuery {
+    fn from(args: CommoditiesArgs) -> Self {
         CommoditiesQuery {
-            limit,
-            name_filter,
-            type_filter,
+            limit: args.limit.unwrap_or(10),
+            name_filter: args.name,
+            type_filter: args.commodity_type,
         }
     }
 }

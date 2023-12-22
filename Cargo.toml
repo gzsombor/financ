@@ -10,9 +10,9 @@ edition = "2018"
 description = "Tool to inspect and modify GnuCash files, and correlate with external sources"
 
 [dependencies]
-diesel = { version = "1.4.2", features = ["sqlite"] }
+diesel = { version = "1.4.8", features = ["sqlite"] }
 dotenv = "0.15"
-clap = "2.32.0"
+clap = { version = "4.4", features = ["derive"] }
 chrono = "0.4.10"
 calamine = "0.23"
 regex = "1"

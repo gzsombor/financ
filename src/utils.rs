@@ -109,13 +109,13 @@ mod tests {
 
     #[test]
     fn test_extract_date_none() {
-        assert_eq!(extract_date(None), None);
+        assert_eq!(extract_date(&None), None);
     }
 
     #[test]
     fn test_extract_date_string() {
         assert_eq!(
-            extract_date(Some("XYZ. PD.  2016.10.20 4488620465".to_string())),
+            extract_date(&Some("XYZ. PD.  2016.10.20 4488620465".to_string())),
             Some(NaiveDate::from_ymd(2016, 10, 20))
         );
     }
