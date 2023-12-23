@@ -50,11 +50,13 @@ impl TransactionQuery {
             query = query.filter(description.like(format!("%{}%", description_txt)));
         }
         if let Some(after_date) = self.after_filter {
-            let after_as_txt = format_sqlite_date(&after_date.and_hms_opt(0, 0, 0).expect("Correct date"));
+            let after_as_txt =
+                format_sqlite_date(&after_date.and_hms_opt(0, 0, 0).expect("Correct date"));
             query = query.filter(post_date.ge(after_as_txt));
         }
         if let Some(before_date) = self.before_filter {
-            let before_as_txt = format_sqlite_date(&before_date.and_hms_opt(23, 59, 59).expect("Correct date"));
+            let before_as_txt =
+                format_sqlite_date(&before_date.and_hms_opt(23, 59, 59).expect("Correct date"));
             query = query.filter(post_date.le(before_as_txt));
         }
 

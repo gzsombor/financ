@@ -112,7 +112,11 @@ impl AccountQuery {
         }
     }
 
-    pub fn get_one(&self, connection: &mut SqliteConnection, show_warning: bool) -> Option<Account> {
+    pub fn get_one(
+        &self,
+        connection: &mut SqliteConnection,
+        show_warning: bool,
+    ) -> Option<Account> {
         let mut account_list = self.execute(connection);
         if account_list.len() != 1 {
             if show_warning {
