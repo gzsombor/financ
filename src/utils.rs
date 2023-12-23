@@ -77,6 +77,12 @@ mod tests {
     use super::*;
     use chrono::NaiveDate;
 
+    fn to_date(year: i32, month: u32, day: u32, hour: u32, min: u32, sec: u32) -> NaiveDateTime {
+        NaiveDate::from_ymd_opt(year, month, day)
+            .and_then(|f| f.and_hms_opt(hour, min, sec))
+            .expect("Valid date time")
+    }
+
     #[test]
     fn test_parse_none() {
         assert_eq!(parse_sqlite_date(&None), None);
@@ -86,21 +92,21 @@ mod tests {
     fn test_parse_sqlite_string() {
         assert_eq!(
             parse_sqlite_date(&Some("20161020203213".to_string())),
-            Some(NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13))
+            Some(to_date(2016, 10, 20, 20, 32, 13))
         );
     }
 
     #[test]
     fn test_format_sqlite_date() {
         assert_eq!(
-            format_sqlite_date(&NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13)),
-            "20161020203213"
+            format_sqlite_date(&to_date(2016, 10, 20, 20, 32, 13)),
+            "2016-10-20 20:32:13"
         );
     }
 
     #[test]
     fn test_format_and_parse_sqlite_date() {
-        let nd = NaiveDate::from_ymd(2016, 10, 20).and_hms(20, 32, 13);
+        let nd = to_date(2016, 10, 20, 20, 32, 13);
         let as_str = format_sqlite_date(&nd);
         assert_eq!(parse_sqlite_date(&Some(as_str)), Some(nd));
     }
@@ -114,7 +120,7 @@ mod tests {
     fn test_extract_date_string() {
         assert_eq!(
             extract_date(&Some("XYZ. PD.  2016.10.20 4488620465".to_string())),
-            Some(NaiveDate::from_ymd(2016, 10, 20))
+            NaiveDate::from_ymd_opt(2016, 10, 20)
         );
     }
 
