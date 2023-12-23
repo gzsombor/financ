@@ -1,4 +1,5 @@
 use clap::{Parser, Subcommand};
+use clap_complete::Shell;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -14,6 +15,10 @@ pub(crate) enum Commands {
     Transactions(TransactionsArgs),
     Correlate(CorrelateArgs),
     Commodities(CommoditiesArgs),
+    Completions {
+        #[arg(value_enum)]
+        shell: Shell,
+    },
 }
 
 #[derive(Args)]
@@ -92,9 +97,6 @@ pub struct CorrelateArgs {
     pub account: DefaultAccountParams,
 
     #[command(flatten)]
-    pub target_account: TargetAccountParams,
-
-    #[command(flatten)]
     pub from_account: FromAccountParams,
 
     #[command(flatten)]
@@ -131,35 +133,35 @@ pub struct DefaultAccountParams {
 #[derive(Args)]
 pub struct TargetAccountParams {
     #[arg(long = "target-account-name", short = 'r')]
-    pub name: Option<String>,
+    pub target_name: Option<String>,
     #[arg(long = "target-account-parent", short = 'P')]
-    pub parent_guid: Option<String>,
+    pub target_parent_guid: Option<String>,
     #[arg(long = "target-account-guid", short = 'G')]
-    pub guid: Option<String>,
+    pub target_guid: Option<String>,
     #[arg(long = "target-account-type", short = 'T')]
-    pub account_type: Option<String>,
+    pub target_account_type: Option<String>,
 }
 
 #[derive(Args)]
 pub struct FeeAccountParams {
     #[arg(long = "fee-account-name", short = 'E')]
-    pub name: Option<String>,
+    pub fee_name: Option<String>,
     #[arg(long = "fee-account-parent", short = 'R')]
-    pub parent_guid: Option<String>,
+    pub fee_parent_guid: Option<String>,
     #[arg(long = "fee-account-guid", short = 'U')]
-    pub guid: Option<String>,
+    pub fee_guid: Option<String>,
     #[arg(long = "fee-account-type", short = 'Y')]
-    pub account_type: Option<String>,
+    pub fee_account_type: Option<String>,
 }
 
 #[derive(Args)]
 pub struct FromAccountParams {
     #[arg(long = "from-account-name", short = 'N')]
-    pub name: Option<String>,
+    pub from_name: Option<String>,
     #[arg(long = "from-account-parent", short = 'P')]
-    pub parent_guid: Option<String>,
+    pub from_parent_guid: Option<String>,
     #[arg(long = "from-account-guid", short = 'G')]
-    pub guid: Option<String>,
+    pub from_guid: Option<String>,
     #[arg(long = "from-account-type", short = 'T')]
-    pub account_type: Option<String>,
+    pub from_account_type: Option<String>,
 }

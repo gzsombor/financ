@@ -13,6 +13,7 @@ description = "Tool to inspect and modify GnuCash files, and correlate with exte
 diesel = { version = "1.4.8", features = ["sqlite"] }
 dotenv = "0.15"
 clap = { version = "4.4", features = ["derive"] }
+clap_complete = { version = "4.4" }
 chrono = "0.4.10"
 calamine = "0.23"
 regex = "1"

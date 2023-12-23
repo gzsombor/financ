@@ -24,20 +24,18 @@ pub fn extract_date(string: &Option<String>) -> Option<NaiveDate> {
     lazy_static! {
         static ref RE: Regex = Regex::new(r"(\d{4})\.(\d{2})\.(\d{2})").unwrap();
     }
-    string
-        .as_ref()
-        .and_then(|str| {
-            let caps = RE.captures(str)?;
-            let year = caps.get(1).unwrap().as_str();
-            let month = caps.get(2).unwrap().as_str();
-            let day = caps.get(3).unwrap().as_str();
+    string.as_ref().and_then(|str| {
+        let caps = RE.captures(str)?;
+        let year = caps.get(1).unwrap().as_str();
+        let month = caps.get(2).unwrap().as_str();
+        let day = caps.get(3).unwrap().as_str();
 
-            Some(NaiveDate::from_ymd(
-                year.parse().expect("Number as year"),
-                month.parse().expect("Number as month"),
-                day.parse().expect("Number as day"),
-            ))
-        })
+        Some(NaiveDate::from_ymd(
+            year.parse().expect("Number as year"),
+            month.parse().expect("Number as month"),
+            day.parse().expect("Number as day"),
+        ))
+    })
 }
 
 pub fn parse_sqlite_date(value: &Option<String>) -> Option<NaiveDateTime> {

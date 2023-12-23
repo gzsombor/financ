@@ -89,10 +89,7 @@ impl TransactionCorrelator {
 
         for row in db_transactions {
             if let Some(posting_date) = row.1.posting().map(|date_time| date_time.date()) {
-                let list = self
-                    .transaction_map
-                    .entry(posting_date)
-                    .or_default();
+                let list = self.transaction_map.entry(posting_date).or_default();
                 list.push(TransactionPairing::new(row));
             }
         }

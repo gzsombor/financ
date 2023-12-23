@@ -27,8 +27,11 @@ pub mod schema;
 mod sheets;
 pub mod utils;
 
+use std::io;
+
 use anyhow::{Context, Result};
-use clap::Parser;
+use clap::{CommandFactory, Parser};
+use clap_complete::{generate, Shell};
 use cli::{Commands, CommoditiesArgs, CorrelateArgs, ListAccountsArgs, TransactionsArgs};
 use console::{style, Term};
 
@@ -49,8 +52,16 @@ fn main() {
         Commands::Transactions(args) => handle_list_entries(args),
         Commands::Commodities(args) => handle_commodities(args),
         Commands::Correlate(args) => handle_correlate(args),
+        Commands::Completions { shell } => handle_shell_completions(shell),
     }
     .unwrap();
+}
+
+fn handle_shell_completions(shell: Shell) -> Result<usize> {
+    let mut cmd = Cli::command();
+    eprintln!("Generating completion file for {shell:?}...");
+    generate(shell, &mut cmd, "financ", &mut io::stdout());
+    Ok(0)
 }
 
 fn handle_list_accounts(args: ListAccountsArgs) -> Result<usize> {

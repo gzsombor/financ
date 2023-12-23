@@ -36,10 +36,10 @@ impl ToAccountQuery for TargetAccountParams {
     fn build(&self, limit: Option<i64>) -> AccountQuery {
         AccountQuery {
             limit: limit.unwrap_or(10),
-            guid_filter: self.guid.clone(),
-            name_filter: self.name.clone(),
-            parent_filter: self.parent_guid.clone(),
-            type_filter: self.account_type.clone(),
+            guid_filter: self.target_guid.clone(),
+            name_filter: self.target_name.clone(),
+            parent_filter: self.target_parent_guid.clone(),
+            type_filter: self.target_account_type.clone(),
         }
     }
 }
@@ -48,10 +48,10 @@ impl ToAccountQuery for FromAccountParams {
     fn build(&self, limit: Option<i64>) -> AccountQuery {
         AccountQuery {
             limit: limit.unwrap_or(10),
-            guid_filter: self.guid.clone(),
-            name_filter: self.name.clone(),
-            parent_filter: self.parent_guid.clone(),
-            type_filter: self.account_type.clone(),
+            guid_filter: self.from_guid.clone(),
+            name_filter: self.from_name.clone(),
+            parent_filter: self.from_parent_guid.clone(),
+            type_filter: self.from_account_type.clone(),
         }
     }
 }
@@ -60,10 +60,10 @@ impl ToAccountQuery for FeeAccountParams {
     fn build(&self, limit: Option<i64>) -> AccountQuery {
         AccountQuery {
             limit: limit.unwrap_or(10),
-            guid_filter: self.guid.clone(),
-            name_filter: self.name.clone(),
-            parent_filter: self.parent_guid.clone(),
-            type_filter: self.account_type.clone(),
+            guid_filter: self.fee_guid.clone(),
+            name_filter: self.fee_name.clone(),
+            parent_filter: self.fee_parent_guid.clone(),
+            type_filter: self.fee_account_type.clone(),
         }
     }
 }
