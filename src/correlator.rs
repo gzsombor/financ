@@ -367,7 +367,7 @@ impl<'a> AddTransactions<'a> {
         let tr_guid = format_guid(&GUID::rand().to_string());
         let spend_date = transaction
             .get_matching_date(Matching::BySpending)
-            .map(|d| d.and_hms(12, 0, 0));
+            .map(|d| d.and_hms_opt(12, 0, 0).expect("Correct date"));
         let current_time = Local::now().naive_local();
         let description = transaction
             .get_description_or_category()
