@@ -72,6 +72,25 @@ pub fn get_value_or_empty(opt: &Option<String>) -> &str {
     }
 }
 
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct DenominatedValue {
+    pub value: i64,
+    pub denom: i64,
+}
+
+impl DenominatedValue {
+    pub fn new(value: i64, denom: i64) -> Self {
+        Self { value, denom }
+    }
+
+    pub fn denominate_float(value: f64, denom: i32) -> Self {
+        Self {
+            value: (value * f64::from(denom)).round() as i64,
+            denom: i64::from(denom),
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

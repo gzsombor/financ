@@ -4,7 +4,7 @@ use guid_create::GUID;
 
 use crate::models::{Account, Commodities};
 use crate::schema::{splits, transactions};
-use crate::utils::{format_guid, format_sqlite_date};
+use crate::utils::{format_guid, format_sqlite_date, DenominatedValue};
 
 #[derive(Insertable, Debug)]
 #[diesel(table_name = splits)]
@@ -41,10 +41,8 @@ impl<'a> NewSplit<'a> {
         tx_guid: &'a str,
         account_guid: &'a str,
         memo: &'a str,
-        value_num: i64,
-        value_denom: i64,
-        quantity_num: i64,
-        quantity_denom: i64,
+        value: DenominatedValue,
+        quantity: DenominatedValue,
     ) -> Self {
         NewSplit {
             guid,
@@ -54,10 +52,10 @@ impl<'a> NewSplit<'a> {
             action: "",
             reconcile_state: "n",
             reconcile_date: "",
-            value_num,
-            value_denom,
-            quantity_num,
-            quantity_denom,
+            value_num: value.value,
+            value_denom: value.denom,
+            quantity_num: quantity.value,
+            quantity_denom: quantity.denom,
             lot_guid: "",
         }
     }
@@ -70,20 +68,9 @@ impl<'a> NewSplit<'a> {
         currency: &Commodities,
         amount: f64,
     ) -> Self {
-        let fraction = f64::from(currency.fraction);
-        let value_num = ((fraction * amount).round()) as i64;
-        let value_denom = i64::from(currency.fraction);
-        let account_qty = (f64::from(account.commodity_scu) * amount) as i64;
-        NewSplit::new_with_defaults(
-            split_guid,
-            tx_guid,
-            &account.guid,
-            memo,
-            value_num,
-            value_denom,
-            account_qty,
-            i64::from(account.commodity_scu),
-        )
+        let value = DenominatedValue::denominate_float(amount, currency.fraction);
+        let qty = DenominatedValue::denominate_float(amount, account.commodity_scu);
+        NewSplit::new_with_defaults(split_guid, tx_guid, &account.guid, memo, value, qty)
     }
 
     pub fn insert(
