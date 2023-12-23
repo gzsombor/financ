@@ -30,7 +30,7 @@ impl TransactionQuery {
         }
     }
 
-    pub fn execute(&self, connection: &SqliteConnection) -> Vec<(Split, Transaction)> {
+    pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<(Split, Transaction)> {
         use crate::schema::splits::dsl::*;
         use crate::schema::transactions::dsl::*;
 
@@ -66,7 +66,7 @@ impl TransactionQuery {
 
     pub fn execute_and_process(
         &self,
-        connection: &SqliteConnection,
+        connection: &mut SqliteConnection,
         target_account: &Option<Account>,
         term: &Term,
     ) -> Result<usize> {
@@ -91,7 +91,7 @@ impl TransactionQuery {
 
     fn move_splits(
         &self,
-        connection: &SqliteConnection,
+        connection: &mut SqliteConnection,
         transactions: Vec<(Split, Transaction)>,
         target_account: &Account,
         term: &Term,

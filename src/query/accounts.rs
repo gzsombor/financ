@@ -69,7 +69,7 @@ impl ToAccountQuery for FeeAccountParams {
 }
 
 impl AccountQuery {
-    pub fn execute(&self, connection: &SqliteConnection) -> Vec<Account> {
+    pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<Account> {
         use crate::schema::accounts::dsl::*;
 
         let mut query = accounts.into_boxed();
@@ -92,7 +92,7 @@ impl AccountQuery {
             .expect("Error loading accounts")
     }
 
-    pub fn execute_and_display(&self, connection: &SqliteConnection) {
+    pub fn execute_and_display(&self, connection: &mut SqliteConnection) {
         let results = self.execute(connection);
         println!("Displaying {} accounts", results.len());
         for account in results {
@@ -100,7 +100,7 @@ impl AccountQuery {
         }
     }
 
-    pub fn get_one(&self, connection: &SqliteConnection, show_warning: bool) -> Option<Account> {
+    pub fn get_one(&self, connection: &mut SqliteConnection, show_warning: bool) -> Option<Account> {
         let mut account_list = self.execute(connection);
         if account_list.len() != 1 {
             if show_warning {

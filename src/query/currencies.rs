@@ -10,7 +10,7 @@ pub struct CommoditiesQuery {
 }
 
 impl CommoditiesQuery {
-    pub fn execute(&self, connection: &SqliteConnection) -> Vec<Commodities> {
+    pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<Commodities> {
         use crate::schema::commodities::dsl::*;
 
         let mut query = commodities.into_boxed();
@@ -36,7 +36,7 @@ impl CommoditiesQuery {
             commodity_map
         }
     */
-    pub fn execute_and_display(&self, connection: &SqliteConnection) -> Result<usize> {
+    pub fn execute_and_display(&self, connection: &mut SqliteConnection) -> Result<usize> {
         let results = self.execute(connection);
         println!("Displaying {} commodities", results.len());
         let len = results.len();
@@ -46,7 +46,7 @@ impl CommoditiesQuery {
         Ok(len)
     }
 
-    pub fn get_by_guid(connection: &SqliteConnection, id: &str) -> Option<Commodities> {
+    pub fn get_by_guid(connection: &mut SqliteConnection, id: &str) -> Option<Commodities> {
         use crate::schema::commodities::dsl::*;
 
         commodities

@@ -7,7 +7,7 @@ use crate::schema::{splits, transactions};
 use crate::utils::{format_guid, format_sqlite_date};
 
 #[derive(Insertable, Debug)]
-#[table_name = "splits"]
+#[diesel(table_name = splits)]
 pub struct NewSplit<'a> {
     pub guid: &'a str,
     pub tx_guid: &'a str,
@@ -25,7 +25,7 @@ pub struct NewSplit<'a> {
 }
 
 #[derive(Insertable, Debug)]
-#[table_name = "transactions"]
+#[diesel(table_name = transactions)]
 pub struct NewTransaction<'a> {
     pub guid: &'a str,
     pub currency_guid: &'a str,
@@ -87,7 +87,7 @@ impl<'a> NewSplit<'a> {
     }
 
     pub fn insert(
-        connection: &SqliteConnection,
+        connection: &mut SqliteConnection,
         tx_guid: &'a str,
         account: &'a Account,
         memo: &'a str,
@@ -128,7 +128,7 @@ impl<'a> NewTransaction<'a> {
     }
 
     pub fn insert(
-        connection: &SqliteConnection,
+        connection: &mut SqliteConnection,
         guid: &'a str,
         currency_guid: &'a str,
         post_date: Option<NaiveDateTime>,

@@ -65,20 +65,20 @@ fn handle_shell_completions(shell: Shell) -> Result<usize> {
 }
 
 fn handle_list_accounts(args: ListAccountsArgs) -> Result<usize> {
-    let connection = establish_connection();
+    let mut connection = establish_connection();
     let q = args.account.build(args.limit);
-    q.execute_and_display(&connection);
+    q.execute_and_display(&mut connection);
     Ok(0)
 }
 
 fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
     let term = Term::stdout();
 
-    let connection = establish_connection();
+    let mut connection = establish_connection();
     let account_query = args.account.build(None);
     let move_target_account = if args.move_split {
         let target_account_query = args.target_account.build(None);
-        let target_account = target_account_query.get_one(&connection, false);
+        let target_account = target_account_query.get_one(&mut connection, false);
         if target_account.is_none() {
             term.write_line(&format!(
                 "Unable to determine the target account for the move-split command:{:?}",
@@ -93,7 +93,7 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
     } else {
         None
     };
-    let q = if let Some(account) = account_query.get_one(&connection, false) {
+    let q = if let Some(account) = account_query.get_one(&mut connection, false) {
         if let Some(target_account) = &move_target_account {
             if target_account.commodity_guid != account.commodity_guid {
                 term.write_line(&format!(
@@ -119,19 +119,19 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
         TransactionQuery::from(args)
     };
     // term.write_line(&format!("Limit is {}", style(q.limit).red()))?;
-    q.execute_and_process(&connection, &move_target_account, &term)
+    q.execute_and_process(&mut connection, &move_target_account, &term)
 }
 
 fn handle_commodities(cmd: CommoditiesArgs) -> Result<usize> {
-    let connection = establish_connection();
+    let mut connection = establish_connection();
     let q = CommoditiesQuery::from(cmd);
-    q.execute_and_display(&connection)
+    q.execute_and_display(&mut connection)
 }
 
 fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
     let format = cmd.format;
 
-    let connection = establish_connection();
+    let mut connection = establish_connection();
     let matching = if cmd.by_booking_date {
         Matching::ByBooking
     } else {
@@ -139,7 +139,7 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
     };
 
     let term = Term::stdout();
-    let cmd = CorrelationCommand {
+    let mut cmd = CorrelationCommand {
         input_file: cmd.input,
         sheet_name: cmd.sheet_name,
         matching,
@@ -151,5 +151,5 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
     };
     let format = create_format(&format)
         .with_context(|| format!("Unknown format:'{}'!", format.unwrap_or_default()))?;
-    cmd.execute(&connection, &term, &format)
+    cmd.execute(&mut connection, &term, &format)
 }

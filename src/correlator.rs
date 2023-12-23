@@ -59,7 +59,7 @@ impl TransactionCorrelator {
         })
     }
 
-    fn load_from_database(&self, connection: &SqliteConnection) -> Vec<(Split, Transaction)> {
+    fn load_from_database(&self, connection: &mut SqliteConnection) -> Vec<(Split, Transaction)> {
         let db_query = TransactionQuery {
             limit: 10000,
             txid_filter: None,
@@ -84,7 +84,7 @@ impl TransactionCorrelator {
         self.external_transactions.2.to_owned()
     }
 
-    fn build_mapping(&mut self, connection: &SqliteConnection) {
+    fn build_mapping(&mut self, connection: &mut SqliteConnection) {
         let db_transactions = self.load_from_database(connection);
 
         for row in db_transactions {
@@ -201,7 +201,7 @@ enum Answer {
 }
 
 struct AddTransactions<'a> {
-    connection: &'a SqliteConnection,
+    connection: &'a mut SqliteConnection,
     unmatched_transactions: &'a [ExternalTransaction],
     only_account: &'a Account,
     counter_account: &'a Account,
@@ -211,8 +211,8 @@ struct AddTransactions<'a> {
 
 impl CorrelationCommand {
     pub fn execute(
-        &self,
-        connection: &SqliteConnection,
+        &mut self,
+        connection: &mut SqliteConnection,
         term: &Term,
         format: &Box<dyn SheetFormat>,
     ) -> Result<usize> {
@@ -263,7 +263,7 @@ impl CorrelationCommand {
                 if let Some(counter_account) =
                     self.counterparty_account_query.get_one(connection, true)
                 {
-                    let add_transactions = AddTransactions {
+                    let mut add_transactions = AddTransactions {
                         connection,
                         unmatched_transactions: &unmatched_transactions,
                         only_account: &only_account,
@@ -295,7 +295,7 @@ impl CorrelationCommand {
 }
 
 impl<'a> AddTransactions<'a> {
-    fn try_to_fix(&self) -> Result<()> {
+    fn try_to_fix(&mut self) -> Result<()> {
         if self.only_account.commodity_guid != self.counter_account.commodity_guid {
             self.term.write_line(&format!(
                 "The two account has different commodities, unable to transfer between: {} - {}",
@@ -354,7 +354,7 @@ impl<'a> AddTransactions<'a> {
         }
     }
 
-    fn add_transaction(&self, transaction: &ExternalTransaction) -> Result<()> {
+    fn add_transaction(&mut self, transaction: &ExternalTransaction) -> Result<()> {
         self.term
             .write_line(&format!("adding {}", style(&transaction).red()))?;
         let commodity_guid = &self
