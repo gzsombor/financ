@@ -14,6 +14,7 @@ pub struct AccountQuery {
     pub name_filter: Option<String>,
     pub parent_filter: Option<String>,
     pub type_filter: Option<String>,
+    pub parent_name_filter: Option<String>,
 }
 
 pub(crate) trait ToAccountQuery {
@@ -28,6 +29,7 @@ impl ToAccountQuery for DefaultAccountParams {
             name_filter: self.name.clone(),
             parent_filter: self.parent_guid.clone(),
             type_filter: self.account_type.clone(),
+            parent_name_filter: self.parent_name.clone(),
         }
     }
 }
@@ -40,6 +42,7 @@ impl ToAccountQuery for TargetAccountParams {
             name_filter: self.target_name.clone(),
             parent_filter: self.target_parent_guid.clone(),
             type_filter: self.target_account_type.clone(),
+            parent_name_filter: self.target_parent_name.clone(),
         }
     }
 }
@@ -52,6 +55,7 @@ impl ToAccountQuery for FromAccountParams {
             name_filter: self.from_name.clone(),
             parent_filter: self.from_parent_guid.clone(),
             type_filter: self.from_account_type.clone(),
+            parent_name_filter: self.from_parent_name.clone(),
         }
     }
 }
@@ -64,26 +68,34 @@ impl ToAccountQuery for FeeAccountParams {
             name_filter: self.fee_name.clone(),
             parent_filter: self.fee_parent_guid.clone(),
             type_filter: self.fee_account_type.clone(),
+            parent_name_filter: self.fee_parent_name.clone(),
         }
     }
 }
 
 impl AccountQuery {
     pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<Account> {
-        use crate::schema::accounts::dsl::*;
+        use crate::schema::accounts;
 
-        let mut query = accounts.into_boxed();
+        let mut query = accounts::table.into_boxed();
         if let Some(ref guid_txt) = self.guid_filter {
-            query = query.filter(guid.like(format!("%{}%", guid_txt)));
+            query = query.filter(accounts::guid.like(format!("%{}%", guid_txt)));
         }
         if let Some(ref name_txt) = self.name_filter {
-            query = query.filter(name.like(format!("%{}%", name_txt)));
+            query = query.filter(accounts::name.like(format!("%{}%", name_txt)));
         }
         if let Some(ref parent_txt) = self.parent_filter {
-            query = query.filter(parent_guid.like(format!("%{}%", parent_txt)));
+            query = query.filter(accounts::parent_guid.like(format!("%{}%", parent_txt)));
         }
         if let Some(ref type_txt) = self.type_filter {
-            query = query.filter(account_type.like(format!("%{}%", type_txt)));
+            query = query.filter(accounts::account_type.like(format!("%{}%", type_txt)));
+        }
+        if let Some(ref parent_name_txt) = self.parent_name_filter {
+            let subquery = accounts::table
+                .filter(accounts::name.like(format!("%{}%", parent_name_txt)))
+                .select(accounts::guid.nullable())
+                .into_boxed();
+            query = query.filter(accounts::parent_guid.eq_any(subquery));
         }
 
         query

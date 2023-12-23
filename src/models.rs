@@ -23,7 +23,9 @@ pub struct Account {
     pub placeholder: Option<i32>,
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Selectable, Debug, PartialEq)]
+#[diesel(table_name = splits)]
+#[diesel(belongs_to(Transaction))]
 pub struct Split {
     pub guid: String,
     pub tx_guid: String,
@@ -40,7 +42,8 @@ pub struct Split {
     pub lot_guid: Option<String>,
 }
 
-#[derive(Queryable, Debug)]
+#[derive(Queryable, Selectable, Debug, PartialEq)]
+#[diesel(table_name = transactions)]
 pub struct Transaction {
     pub guid: String,
     pub currency_guid: String,

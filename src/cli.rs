@@ -128,6 +128,9 @@ pub struct DefaultAccountParams {
     pub guid: Option<String>,
     #[arg(long = "account-type", short = 't')]
     pub account_type: Option<String>,
+
+    #[arg(long = "account-parent-name")]
+    pub parent_name: Option<String>,
 }
 
 #[derive(Args)]
@@ -140,6 +143,8 @@ pub struct TargetAccountParams {
     pub target_guid: Option<String>,
     #[arg(long = "target-account-type", short = 'T')]
     pub target_account_type: Option<String>,
+    #[arg(long = "target-parent-name")]
+    pub target_parent_name: Option<String>,
 }
 
 #[derive(Args)]
@@ -152,6 +157,8 @@ pub struct FeeAccountParams {
     pub fee_guid: Option<String>,
     #[arg(long = "fee-account-type", short = 'Y')]
     pub fee_account_type: Option<String>,
+    #[arg(long = "fee-parent-name")]
+    pub fee_parent_name: Option<String>,
 }
 
 #[derive(Args)]
@@ -164,4 +171,6 @@ pub struct FromAccountParams {
     pub from_guid: Option<String>,
     #[arg(long = "from-account-type", short = 'T')]
     pub from_account_type: Option<String>,
+    #[arg(long = "from-parent-name")]
+    pub from_parent_name: Option<String>,
 }
