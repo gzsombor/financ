@@ -152,25 +152,13 @@ impl SheetDefinition {
         transactions: &[ExternalTransaction],
         matching: Matching,
     ) -> (Option<NaiveDate>, Option<NaiveDate>) {
-        transactions
+        let dates = transactions
             .iter()
-            .fold((None, None), |(min, max), current| {
-                let maybe_current_date = current.get_matching_date(matching);
-                match maybe_current_date {
-                    Some(current_date) => {
-                        let new_min = match min {
-                            None => Some(current_date),
-                            Some(y) => Some(if current_date < y { current_date } else { y }),
-                        };
-                        let new_max = match max {
-                            None => Some(current_date),
-                            Some(y) => Some(if current_date > y { current_date } else { y }),
-                        };
-                        (new_min, new_max)
-                    }
-                    None => (min, max),
-                }
-            })
+            .flat_map(|current| current.get_matching_date(matching));
+        let min = dates.clone().min();
+        let max = dates.max();
+
+        (min, max)
     }
 }
 
