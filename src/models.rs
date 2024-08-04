@@ -90,19 +90,25 @@ impl Split {
     pub fn is_equal_amount(&self, amount: f64) -> bool {
         (amount * (self.quantity_denom as f64)) as i64 == self.quantity_num
     }
+
+    pub fn get_value(&self) -> f64 {
+        (self.value_num as f64) / (self.value_denom as f64)
+    }
+
+    pub fn get_quantity(&self) -> f64 {
+        (self.quantity_num as f64) / (self.quantity_denom as f64)
+    }
 }
 
 impl fmt::Display for Split {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(
             f,
-            "{}:{} - {}({}) {}({})",
+            "{}:{} - {} {}",
             self.memo,
             self.action,
-            self.value_num,
-            self.value_denom,
-            self.quantity_num,
-            self.quantity_denom
+            self.get_value(),
+            self.get_quantity(),
         )
     }
 }
