@@ -1,4 +1,3 @@
-
 use calamine::DataType;
 use chrono::{NaiveDate, NaiveDateTime};
 
@@ -28,9 +27,9 @@ pub fn cell_to_date_raw(cell: &DataType, format: &str) -> Option<NaiveDate> {
         DataType::DateTime(date_time) => {
             println!("Unexpected format: date time : {date_time}");
             panic!("Wrong type!");
-        },
+        }
         DataType::DateTimeIso(date_time) => NaiveDate::parse_from_str(date_time, "%Y-%m-%d").ok(),
-        _ => None
+        _ => None,
     }
 }
 
