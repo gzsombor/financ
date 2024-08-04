@@ -119,13 +119,13 @@ impl SheetDefinition {
 
     pub fn load(
         &mut self,
-        maybe_sheet_name: &Option<String>,
+        maybe_sheet_name: Option<String>,
         matching: Matching,
         format: &Box<dyn SheetFormat>,
         term: &Term,
     ) -> Result<ExternalTransactionList> {
         let sheet_name = match maybe_sheet_name {
-            Some(name) => name.to_owned(),
+            Some(name) => name,
             None => {
                 let sheet_names = self.workbook.sheet_names();
                 sheet_names.first().unwrap().to_owned()

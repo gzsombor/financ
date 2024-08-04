@@ -40,7 +40,7 @@ struct TransactionCorrelator {
 impl TransactionCorrelator {
     pub fn new(
         input_file: &str,
-        sheet_name: &Option<String>,
+        sheet_name: Option<String>,
         account: String,
         matching: Matching,
         verbose: bool,
@@ -218,8 +218,8 @@ impl CorrelationCommand {
     ) -> Result<usize> {
         if let Some(only_account) = self.account_query.get_one(connection, true) {
             let mut correlator = TransactionCorrelator::new(
-                &self.input_file.clone(),
-                &self.sheet_name,
+                &self.input_file,
+                self.sheet_name.clone(),
                 only_account.guid.clone(),
                 self.matching,
                 self.verbose,
