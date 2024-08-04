@@ -19,8 +19,9 @@ calamine = "0.23"
 regex = "1"
 lazy_static = "1.4.0"
 console = "0.15"
-guid-create = "0.3"
+guid-create = "0.4"
 anyhow = "1.0"
+rust_decimal = "1.35.0"
 
 #[patch.crates-io]
 #calamine = { path = "../calamine" }

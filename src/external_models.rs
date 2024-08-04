@@ -6,6 +6,7 @@ use anyhow::Result;
 use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
 use chrono::NaiveDate;
 use console::{style, Term};
+use rust_decimal::Decimal;
 
 use crate::models::{Split, Transaction};
 
@@ -13,13 +14,13 @@ use crate::models::{Split, Transaction};
 pub struct ExternalTransaction {
     pub date: Option<NaiveDate>,
     pub booking_date: Option<NaiveDate>,
-    pub amount: Option<f64>,
+    pub amount: Option<Decimal>,
     pub category: Option<String>,
     pub description: Option<String>,
     pub other_account: Option<String>,
     pub other_account_name: Option<String>,
     pub textual_date: Option<NaiveDate>,
-    pub transaction_fee: Option<f64>,
+    pub transaction_fee: Option<Decimal>,
 }
 
 impl fmt::Display for ExternalTransaction {
@@ -73,7 +74,7 @@ impl ExternalTransaction {
             self.description.clone()
         }
     */
-    pub fn get_amount(&self) -> Option<f64> {
+    pub fn get_amount(&self) -> Option<Decimal> {
         self.amount
     }
 
@@ -132,8 +133,13 @@ impl SheetDefinition {
             }
         };
         if let Ok(sheet) = self.workbook.worksheet_range(&sheet_name) {
-            term.write_line(&format!("found sheet '{}'", style(sheet_name).blue()))?;
+            term.write_line(&format!("found sheet '{}'", style(&sheet_name).blue()))?;
             let trans = format.parse_sheet(&sheet);
+            term.write_line(&format!(
+                "found {} transaction on sheet {}",
+                style(trans.len()).cyan(),
+                style(&sheet_name).blue()
+            ))?;
             let (min, max) = SheetDefinition::find_min_max(&trans, matching);
             Ok(ExternalTransactionList(trans, min, max))
         } else {
@@ -162,22 +168,26 @@ impl SheetDefinition {
     }
 }
 
+#[derive(Debug)]
 pub struct TransactionPairing {
     transaction: Transaction,
     split: Split,
     external: RefCell<Option<ExternalTransaction>>,
+    amount: Decimal,
 }
 
 impl TransactionPairing {
     pub fn new(pair: (Split, Transaction)) -> Self {
+        let amount = pair.0.get_quantity_as_decimal();
         TransactionPairing {
             transaction: pair.1,
             split: pair.0,
             external: RefCell::new(None),
+            amount,
         }
     }
-    pub fn is_equal_amount(&self, amount: f64) -> bool {
-        self.split.is_equal_amount(amount)
+    pub fn is_equal_amount(&self, amount: Decimal) -> bool {
+        amount.normalize() == self.amount
     }
 
     pub fn is_not_matched(&self) -> bool {

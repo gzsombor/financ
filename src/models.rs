@@ -1,6 +1,8 @@
 use std::fmt;
 
 use chrono::NaiveDateTime;
+use rust_decimal::prelude::FromPrimitive;
+use rust_decimal::Decimal;
 
 use crate::schema::{accounts, splits, transactions};
 use crate::utils::{get_value_or_empty, parse_sqlite_date};
@@ -87,8 +89,18 @@ impl fmt::Display for Account {
 }
 
 impl Split {
-    pub fn is_equal_amount(&self, amount: f64) -> bool {
-        (amount * (self.quantity_denom as f64)) as i64 == self.quantity_num
+    pub fn get_quantity_as_decimal(&self) -> Decimal {
+        Self::as_decimal(self.quantity_num, self.quantity_denom)
+    }
+
+    pub fn get_value_as_decimal(&self) -> Decimal {
+        Self::as_decimal(self.value_num, self.value_denom)
+    }
+
+    fn as_decimal(num: i64, denom: i64) -> Decimal {
+        let n = Decimal::from_i64(num).expect("An integer to decimal conversion should work");
+        n.checked_div(Decimal::from_i64(denom).expect("Denominator can be converted to decimal"))
+            .expect("dividing with denominator should work")
     }
 
     pub fn get_value(&self) -> f64 {

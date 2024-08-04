@@ -1,6 +1,7 @@
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use guid_create::GUID;
+use rust_decimal::Decimal;
 
 use crate::models::{Account, Commodities};
 use crate::schema::{splits, transactions};
@@ -66,10 +67,10 @@ impl<'a> NewSplit<'a> {
         account: &'a Account,
         memo: &'a str,
         currency: &Commodities,
-        amount: f64,
+        amount: Decimal,
     ) -> Self {
-        let value = DenominatedValue::denominate_float(amount, currency.fraction);
-        let qty = DenominatedValue::denominate_float(amount, account.commodity_scu);
+        let value = DenominatedValue::denominate_decimal(amount, currency.fraction);
+        let qty = DenominatedValue::denominate_decimal(amount, account.commodity_scu);
         NewSplit::new_with_defaults(split_guid, tx_guid, &account.guid, memo, value, qty)
     }
 
@@ -79,7 +80,7 @@ impl<'a> NewSplit<'a> {
         account: &'a Account,
         memo: &'a str,
         currency: &Commodities,
-        amount: f64,
+        amount: Decimal,
     ) -> String {
         let split_guid = format_guid(&GUID::rand().to_string());
         {

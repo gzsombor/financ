@@ -345,7 +345,7 @@ impl<'a> AddTransactions<'a> {
 
     fn check_fee_configured(&self, transaction: &ExternalTransaction) -> Result<()> {
         match (transaction.transaction_fee, self.fee_account) {
-            (Some(fee), None) if fee != 0.0 => Err(anyhow!(
+            (Some(fee), None) if !fee.is_zero() => Err(anyhow!(
                 "Transaction({}) has a fee({}), however no fee account specified!",
                 get_value_or_empty(&transaction.description),
                 fee
@@ -400,7 +400,7 @@ impl<'a> AddTransactions<'a> {
             &commodity,
             -amount - fee_value,
         );
-        if *fee_value != 0.0 {
+        if !(*fee_value).is_zero() {
             let _fee_id_counter = NewSplit::insert(
                 self.connection,
                 &tr_guid,

@@ -1,6 +1,6 @@
 use crate::external_models::{ExternalTransaction, SheetFormat};
 use crate::sheets::{
-    cell_to_date, cell_to_datetime, cell_to_english_date, cell_to_float, cell_to_german_date,
+    cell_to_date, cell_to_datetime, cell_to_decimal, cell_to_english_date, cell_to_german_date,
     cell_to_iso_date, cell_to_string,
 };
 use crate::utils::extract_date;
@@ -40,7 +40,7 @@ impl SheetFormat for OtpFormat {
                 ExternalTransaction {
                     date: cell_to_date(&row[2]),
                     booking_date: cell_to_date(&row[3]),
-                    amount: cell_to_float(&row[4]),
+                    amount: cell_to_decimal(&row[4]),
                     category: cell_to_string(&row[1]),
                     description: descrip,
                     other_account: cell_to_string(&row[6]),
@@ -65,7 +65,7 @@ impl SheetFormat for OtpFormat2020 {
                 ExternalTransaction {
                     date: spend_date.map(|datetime| datetime.date()),
                     booking_date: cell_to_date(&row[3]),
-                    amount: cell_to_float(&row[4]),
+                    amount: cell_to_decimal(&row[4]),
                     category: cell_to_string(&row[1]),
                     description,
                     other_account: cell_to_string(&row[5]),
@@ -135,7 +135,7 @@ impl SheetFormat for GranitFormat {
                 ExternalTransaction {
                     date,
                     booking_date: None,
-                    amount: cell_to_float(&row[1]),
+                    amount: cell_to_decimal(&row[1]),
                     category: cell_to_string(&row[6]),
                     description: concat(&other_account_name, &comment),
                     other_account: cell_to_string(&row[8]), //.or_else(|| cell_to_string(&row[10])),
@@ -157,8 +157,8 @@ impl SheetFormat for BankAustriaFormat {
             .map(|row| {
                 let date = cell_to_german_date(&row[1]);
                 let booking_date = cell_to_german_date(&row[1]);
-                let amount = cell_to_float(&row[6]).unwrap();
-                let other_account = if amount < 0.0 {
+                let amount = cell_to_decimal(&row[6]).unwrap();
+                let other_account = if amount.is_sign_negative() {
                     cell_to_string(&row[12])
                 } else {
                     cell_to_string(&row[9])
@@ -187,7 +187,7 @@ impl SheetFormat for TransferwiseFormat {
             .filter(|row| is_float(&row[2]))
             .map(|row| {
                 let date = cell_to_english_date(&row[1]);
-                let amount = cell_to_float(&row[2]);
+                let amount = cell_to_decimal(&row[2]);
                 let other_account_name =
                     cell_to_string(&row[13]).or_else(|| cell_to_string(&row[11]));
                 let other_account = cell_to_string(&row[12]);
@@ -201,7 +201,8 @@ impl SheetFormat for TransferwiseFormat {
                     other_account,
                     other_account_name,
                     textual_date: None,
-                    transaction_fee: cell_to_float(&row[14]).filter(|value| *value > 0.0),
+                    transaction_fee: cell_to_decimal(&row[14])
+                        .filter(|value| value.is_sign_positive()),
                 }
             })
             .collect()
@@ -217,7 +218,7 @@ impl SheetFormat for MagnetFormat {
             .map(|row| {
                 let date = cell_to_date(&row[1]);
                 let booking_date = cell_to_date(&row[2]);
-                let amount = cell_to_float(&row[6]);
+                let amount = cell_to_decimal(&row[6]);
                 let other_account = cell_to_string(&row[4]);
                 let other_account_name = cell_to_string(&row[3]);
                 let description = cell_to_string(&row[5]);

@@ -1,5 +1,6 @@
 use calamine::DataType;
 use chrono::{NaiveDate, NaiveDateTime};
+use rust_decimal::{prelude::FromPrimitive, Decimal};
 
 // Format yyyy.mm.dd.
 pub fn cell_to_date(cell: &DataType) -> Option<NaiveDate> {
@@ -53,10 +54,11 @@ pub fn cell_to_string(cell: &DataType) -> Option<String> {
     }
 }
 
-pub fn cell_to_float(cell: &DataType) -> Option<f64> {
-    if let DataType::Float(flt) = cell {
-        Some(*flt)
-    } else {
-        None
+pub fn cell_to_decimal(cell: &DataType) -> Option<Decimal> {
+    match cell {
+        DataType::Float(flt) => Decimal::from_f64(*flt),
+        DataType::Int(numb) => Decimal::from_i64(*numb),
+        DataType::String(string) => Decimal::from_scientific(string).ok(),
+        _ => None,
     }
 }

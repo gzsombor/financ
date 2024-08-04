@@ -2,6 +2,8 @@ use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use dotenv::dotenv;
 use regex::Regex;
+use rust_decimal::prelude::ToPrimitive;
+use rust_decimal::Decimal;
 use std::env;
 
 pub fn establish_connection() -> SqliteConnection {
@@ -83,9 +85,12 @@ impl DenominatedValue {
         Self { value, denom }
     }
 
-    pub fn denominate_float(value: f64, denom: i32) -> Self {
+    pub fn denominate_decimal(value: Decimal, denom: i32) -> Self {
         Self {
-            value: (value * f64::from(denom)).round() as i64,
+            value: (value * Decimal::from(denom))
+                .round()
+                .to_i64()
+                .expect("conversion to i64 works after rounding"),
             denom: i64::from(denom),
         }
     }
