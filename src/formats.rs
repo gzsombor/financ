@@ -4,7 +4,7 @@ use crate::sheets::{
     cell_to_iso_date, cell_to_string,
 };
 use crate::utils::extract_date;
-use calamine::{DataType, Range};
+use calamine::{Data, DataType, Range};
 
 struct OtpFormat;
 struct OtpFormat2020;
@@ -30,10 +30,10 @@ pub fn create_format(name: &Option<String>) -> Option<Box<dyn SheetFormat>> {
 }
 
 impl SheetFormat for OtpFormat {
-    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
         range
             .rows()
-            .filter(|row| row[0] != DataType::Empty)
+            .filter(|row| row[0] != Data::Empty)
             .map(|row| {
                 let descrip = cell_to_string(&row[8]);
                 let parsed_date = extract_date(&descrip);
@@ -54,10 +54,10 @@ impl SheetFormat for OtpFormat {
 }
 
 impl SheetFormat for OtpFormat2020 {
-    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
         range
             .rows()
-            .filter(|row| row[0] != DataType::Empty)
+            .filter(|row| row[0] != Data::Empty)
             .map(|row| {
                 let spend_date = cell_to_datetime(&row[2]);
                 let description = cell_to_string(&row[7]);
@@ -76,10 +76,6 @@ impl SheetFormat for OtpFormat2020 {
             })
             .collect()
     }
-}
-
-fn is_float(dt: &DataType) -> bool {
-    matches!(dt, DataType::Float(_))
 }
 
 fn concat(first: &Option<String>, second: &Option<String>) -> Option<String> {
@@ -120,10 +116,10 @@ fn cleanup_string(input: &str) -> String {
 }
 
 impl SheetFormat for GranitFormat {
-    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
         range
             .rows()
-            .filter(|row| is_float(&row[1]))
+            .filter(|row| row[1].is_float())
             .map(|row| {
                 let date = cell_to_iso_date(&row[4]);
                 let other_account_name = cell_to_string(&row[7])
@@ -149,11 +145,11 @@ impl SheetFormat for GranitFormat {
 }
 
 impl SheetFormat for BankAustriaFormat {
-    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
         range
             .rows()
             .skip(1)
-            .filter(|row| is_float(&row[6]))
+            .filter(|row| row[6].is_float())
             .map(|row| {
                 let date = cell_to_german_date(&row[1]);
                 let booking_date = cell_to_german_date(&row[1]);
@@ -180,11 +176,11 @@ impl SheetFormat for BankAustriaFormat {
 }
 
 impl SheetFormat for TransferwiseFormat {
-    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
         range
             .rows()
             .skip(1)
-            .filter(|row| is_float(&row[2]))
+            .filter(|row| row[2].is_float())
             .map(|row| {
                 let date = cell_to_english_date(&row[1]);
                 let amount = cell_to_decimal(&row[2]);
@@ -210,11 +206,11 @@ impl SheetFormat for TransferwiseFormat {
 }
 
 impl SheetFormat for MagnetFormat {
-    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction> {
+    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
         range
             .rows()
             .skip(1)
-            .filter(|row| is_float(&row[6]))
+            .filter(|row| row[6].is_float())
             .map(|row| {
                 let date = cell_to_date(&row[1]);
                 let booking_date = cell_to_date(&row[2]);

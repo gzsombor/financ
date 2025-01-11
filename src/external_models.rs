@@ -3,7 +3,7 @@ use std::fs::File;
 use std::{cell::RefCell, io::BufReader};
 
 use anyhow::Result;
-use calamine::{open_workbook_auto, DataType, Range, Reader, Sheets};
+use calamine::{open_workbook_auto, Data, Range, Reader, Sheets};
 use chrono::NaiveDate;
 use console::{style, Term};
 use rust_decimal::Decimal;
@@ -106,7 +106,7 @@ pub struct SheetDefinition {
 }
 
 pub trait SheetFormat {
-    fn parse_sheet(&self, range: &Range<DataType>) -> Vec<ExternalTransaction>;
+    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction>;
 }
 
 impl SheetDefinition {
