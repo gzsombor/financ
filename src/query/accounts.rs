@@ -4,7 +4,8 @@ use diesel::prelude::*;
 
 use crate::{
     cli::{DefaultAccountParams, FeeAccountParams, FromAccountParams, TargetAccountParams},
-    models::Account, schema::commodities,
+    models::Account,
+    schema::commodities,
 };
 
 #[derive(Debug)]

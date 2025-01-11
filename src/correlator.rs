@@ -294,7 +294,7 @@ impl CorrelationCommand {
     }
 }
 
-impl<'a> AddTransactions<'a> {
+impl AddTransactions<'_> {
     fn try_to_fix(&mut self) -> Result<()> {
         if self.only_account.commodity_guid != self.counter_account.commodity_guid {
             self.term.write_line(&format!(
