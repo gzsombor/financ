@@ -150,9 +150,9 @@ pub struct TargetAccountParams {
     #[arg(long = "target-parent-name")]
     pub target_parent_name: Option<String>,
     #[arg(long = "target-commodity-id")]
-    pub commodity_id: Option<String>,
+    pub target_commodity_id: Option<String>,
     #[arg(long = "target-commodity-name")]
-    pub commodity_name: Option<String>,
+    pub target_commodity_name: Option<String>,
 }
 
 #[derive(Args)]
@@ -168,9 +168,9 @@ pub struct FeeAccountParams {
     #[arg(long = "fee-parent-name")]
     pub fee_parent_name: Option<String>,
     #[arg(long = "fee-commodity-id")]
-    pub commodity_id: Option<String>,
+    pub fee_commodity_id: Option<String>,
     #[arg(long = "fee-commodity-name")]
-    pub commodity_name: Option<String>,
+    pub fee_commodity_name: Option<String>,
 }
 
 #[derive(Args)]
@@ -186,7 +186,7 @@ pub struct FromAccountParams {
     #[arg(long = "from-parent-name")]
     pub from_parent_name: Option<String>,
     #[arg(long = "from-commodity-id")]
-    pub commodity_id: Option<String>,
+    pub from_commodity_id: Option<String>,
     #[arg(long = "from-commodity-name")]
-    pub commodity_name: Option<String>,
+    pub from_commodity_name: Option<String>,
 }

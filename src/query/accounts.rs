@@ -48,8 +48,8 @@ impl ToAccountQuery for TargetAccountParams {
             parent_filter: self.target_parent_guid.clone(),
             type_filter: self.target_account_type.clone(),
             parent_name_filter: self.target_parent_name.clone(),
-            commodity_id_filter: self.commodity_id.clone(),
-            commodity_name_filter: self.commodity_name.clone(),
+            commodity_id_filter: self.target_commodity_id.clone(),
+            commodity_name_filter: self.target_commodity_name.clone(),
         }
     }
 }
@@ -63,8 +63,8 @@ impl ToAccountQuery for FromAccountParams {
             parent_filter: self.from_parent_guid.clone(),
             type_filter: self.from_account_type.clone(),
             parent_name_filter: self.from_parent_name.clone(),
-            commodity_id_filter: self.commodity_id.clone(),
-            commodity_name_filter: self.commodity_name.clone(),
+            commodity_id_filter: self.from_commodity_id.clone(),
+            commodity_name_filter: self.from_commodity_name.clone(),
         }
     }
 }
@@ -78,8 +78,8 @@ impl ToAccountQuery for FeeAccountParams {
             parent_filter: self.fee_parent_guid.clone(),
             type_filter: self.fee_account_type.clone(),
             parent_name_filter: self.fee_parent_name.clone(),
-            commodity_id_filter: self.commodity_id.clone(),
-            commodity_name_filter: self.commodity_name.clone(),
+            commodity_id_filter: self.fee_commodity_id.clone(),
+            commodity_name_filter: self.fee_commodity_name.clone(),
         }
     }
 }
