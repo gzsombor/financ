@@ -4,7 +4,7 @@ use diesel::prelude::*;
 
 use crate::{
     cli::{DefaultAccountParams, FeeAccountParams, FromAccountParams, TargetAccountParams},
-    models::Account,
+    models::Account, schema::commodities,
 };
 
 #[derive(Debug)]
@@ -15,6 +15,8 @@ pub struct AccountQuery {
     pub parent_filter: Option<String>,
     pub type_filter: Option<String>,
     pub parent_name_filter: Option<String>,
+    pub commodity_id_filter: Option<String>,
+    pub commodity_name_filter: Option<String>,
 }
 
 pub(crate) trait ToAccountQuery {
@@ -30,6 +32,8 @@ impl ToAccountQuery for DefaultAccountParams {
             parent_filter: self.parent_guid.clone(),
             type_filter: self.account_type.clone(),
             parent_name_filter: self.parent_name.clone(),
+            commodity_id_filter: self.commodity_id.clone(),
+            commodity_name_filter: self.commodity_name.clone(),
         }
     }
 }
@@ -43,6 +47,8 @@ impl ToAccountQuery for TargetAccountParams {
             parent_filter: self.target_parent_guid.clone(),
             type_filter: self.target_account_type.clone(),
             parent_name_filter: self.target_parent_name.clone(),
+            commodity_id_filter: self.commodity_id.clone(),
+            commodity_name_filter: self.commodity_name.clone(),
         }
     }
 }
@@ -56,6 +62,8 @@ impl ToAccountQuery for FromAccountParams {
             parent_filter: self.from_parent_guid.clone(),
             type_filter: self.from_account_type.clone(),
             parent_name_filter: self.from_parent_name.clone(),
+            commodity_id_filter: self.commodity_id.clone(),
+            commodity_name_filter: self.commodity_name.clone(),
         }
     }
 }
@@ -69,6 +77,8 @@ impl ToAccountQuery for FeeAccountParams {
             parent_filter: self.fee_parent_guid.clone(),
             type_filter: self.fee_account_type.clone(),
             parent_name_filter: self.fee_parent_name.clone(),
+            commodity_id_filter: self.commodity_id.clone(),
+            commodity_name_filter: self.commodity_name.clone(),
         }
     }
 }
@@ -96,6 +106,16 @@ impl AccountQuery {
                 .select(accounts::guid.nullable())
                 .into_boxed();
             query = query.filter(accounts::parent_guid.eq_any(subquery));
+        }
+        if let Some(ref commodity_id) = self.commodity_id_filter {
+            query = query.filter(accounts::commodity_guid.like(format!("%{}%", commodity_id)));
+        }
+        if let Some(ref commodity_name) = self.commodity_name_filter {
+            let subquery = commodities::table
+                .filter(commodities::fullname.like(format!("%{}%", commodity_name)))
+                .select(commodities::guid.nullable())
+                .into_boxed();
+            query = query.filter(accounts::commodity_guid.eq_any(subquery));
         }
 
         query

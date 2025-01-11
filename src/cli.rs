@@ -128,6 +128,10 @@ pub struct DefaultAccountParams {
     pub guid: Option<String>,
     #[arg(long = "account-type", short = 't')]
     pub account_type: Option<String>,
+    #[arg(long = "commodity-id", short = 'o')]
+    pub commodity_id: Option<String>,
+    #[arg(long = "commodity-name", short = 'c')]
+    pub commodity_name: Option<String>,
 
     #[arg(long = "account-parent-name")]
     pub parent_name: Option<String>,
@@ -145,6 +149,10 @@ pub struct TargetAccountParams {
     pub target_account_type: Option<String>,
     #[arg(long = "target-parent-name")]
     pub target_parent_name: Option<String>,
+    #[arg(long = "target-commodity-id")]
+    pub commodity_id: Option<String>,
+    #[arg(long = "target-commodity-name")]
+    pub commodity_name: Option<String>,
 }
 
 #[derive(Args)]
@@ -159,6 +167,10 @@ pub struct FeeAccountParams {
     pub fee_account_type: Option<String>,
     #[arg(long = "fee-parent-name")]
     pub fee_parent_name: Option<String>,
+    #[arg(long = "fee-commodity-id")]
+    pub commodity_id: Option<String>,
+    #[arg(long = "fee-commodity-name")]
+    pub commodity_name: Option<String>,
 }
 
 #[derive(Args)]
@@ -173,4 +185,8 @@ pub struct FromAccountParams {
     pub from_account_type: Option<String>,
     #[arg(long = "from-parent-name")]
     pub from_parent_name: Option<String>,
+    #[arg(long = "from-commodity-id")]
+    pub commodity_id: Option<String>,
+    #[arg(long = "from-commodity-name")]
+    pub commodity_name: Option<String>,
 }
