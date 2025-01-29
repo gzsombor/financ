@@ -70,7 +70,7 @@ pub struct TransactionsArgs {
 #[derive(Args)]
 pub struct CorrelateArgs {
     // The file which contains a list of transaction to correlate
-    #[arg(long = "input", short = 'i')]
+    #[arg(long = "input", short = 'i', value_parser = non_empty_string)]
     pub input: String,
 
     // The name of the sheet
@@ -189,4 +189,12 @@ pub struct FromAccountParams {
     pub from_commodity_id: Option<String>,
     #[arg(long = "from-commodity-name")]
     pub from_commodity_name: Option<String>,
+}
+
+fn non_empty_string(s: &str) -> Result<String, String> {
+    if s.is_empty() {
+        Err(String::from("Input parameter cannot be an empty string"))
+    } else {
+        Ok(s.to_string())
+    }
 }
