@@ -9,7 +9,7 @@ use guid_create::GUID;
 
 use crate::dbmodifier::{NewSplit, NewTransaction};
 use crate::external_models::{
-    ExternalTransaction, ExternalTransactionList, Matching, SheetDefinition, SheetFormat,
+    ExternalTransaction, ExternalTransactionList, Matching, SheetDefinition, SheetParser,
     TransactionPairing,
 };
 use crate::models::{Account, Split, Transaction};
@@ -44,7 +44,7 @@ impl TransactionCorrelator {
         account: String,
         matching: Matching,
         verbose: bool,
-        format: &Box<dyn SheetFormat>,
+        format: &dyn SheetParser,
         term: &Term,
     ) -> Result<Self> {
         let mut sheet_definition = SheetDefinition::new(input_file)?;
@@ -211,7 +211,7 @@ impl CorrelationCommand {
         &mut self,
         connection: &mut SqliteConnection,
         term: &Term,
-        format: &Box<dyn SheetFormat>,
+        format: &dyn SheetParser,
     ) -> Result<usize> {
         if let Some(only_account) = self.account_query.get_one(connection, true) {
             let mut correlator = TransactionCorrelator::new(

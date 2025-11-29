@@ -105,9 +105,10 @@ pub struct SheetDefinition {
     workbook: Sheets<BufReader<File>>,
 }
 
-pub trait SheetFormat {
+pub trait SheetParser {
     fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction>;
 }
+
 
 impl SheetDefinition {
     pub fn new(input_file: &str) -> Result<Self> {
@@ -122,7 +123,7 @@ impl SheetDefinition {
         &mut self,
         maybe_sheet_name: Option<String>,
         matching: Matching,
-        format: &Box<dyn SheetFormat>,
+        format: &dyn SheetParser,
         term: &Term,
     ) -> Result<ExternalTransactionList> {
         let sheet_name = match maybe_sheet_name {

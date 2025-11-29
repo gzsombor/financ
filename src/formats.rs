@@ -1,4 +1,4 @@
-use crate::external_models::{ExternalTransaction, SheetFormat};
+use crate::external_models::{ExternalTransaction, SheetParser};
 use crate::sheets::{
     cell_to_date, cell_to_datetime, cell_to_decimal, cell_to_english_date, cell_to_german_date,
     cell_to_iso_date, cell_to_string,
@@ -6,33 +6,38 @@ use crate::sheets::{
 use crate::utils::extract_date;
 use calamine::{Data, DataType, Range};
 
-struct OtpFormat;
-struct OtpFormat2020;
-struct GranitFormat;
-struct BankAustriaFormat;
-struct TransferwiseFormat;
-struct MagnetFormat;
+#[derive(Debug)]
+pub enum SheetFormat {
+    Otp,
+    Otp2020,
+    Granit,
+    BankAustria,
+    Transferwise,
+    Magnet,
+}
 
-pub fn create_format(name: &Option<String>) -> Option<Box<dyn SheetFormat>> {
+pub fn create_format(name: &Option<String>) -> Option<SheetFormat> {
     if let Some(format_name) = name {
         match format_name.to_lowercase().as_ref() {
-            "otp" => Some(Box::new(OtpFormat {})),
-            "otp2020" => Some(Box::new(OtpFormat2020 {})),
-            "granit" => Some(Box::new(GranitFormat {})),
-            "bankaustria" => Some(Box::new(BankAustriaFormat {})),
-            "transferwise" => Some(Box::new(TransferwiseFormat {})),
-            "magnet" => Some(Box::new(MagnetFormat {})),
+            "otp" => Some(SheetFormat::Otp),
+            "otp2020" => Some(SheetFormat::Otp2020),
+            "granit" => Some(SheetFormat::Granit),
+            "bankaustria" => Some(SheetFormat::BankAustria),
+            "transferwise" => Some(SheetFormat::Transferwise),
+            "magnet" => Some(SheetFormat::Magnet),
             _ => None,
         }
     } else {
-        Some(Box::new(OtpFormat {}))
+        Some(SheetFormat::Otp)
     }
 }
 
-impl SheetFormat for OtpFormat {
+impl SheetParser for SheetFormat {
     fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
-        range
-            .rows()
+        match self {
+            SheetFormat::Otp => {
+                range
+                    .rows()
             .filter(|row| row[0] != Data::Empty)
             .map(|row| {
                 let descrip = cell_to_string(&row[8]);
@@ -51,10 +56,7 @@ impl SheetFormat for OtpFormat {
             })
             .collect()
     }
-}
-
-impl SheetFormat for OtpFormat2020 {
-    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
+            SheetFormat::Otp2020 => {
         range
             .rows()
             .filter(|row| row[0] != Data::Empty)
@@ -75,6 +77,114 @@ impl SheetFormat for OtpFormat2020 {
                 }
             })
             .collect()
+    }
+            SheetFormat::Granit => {
+        range
+            .rows()
+            .filter(|row| row[1].is_float())
+            .map(|row| {
+                let date = cell_to_iso_date(&row[4]);
+                let other_account_name = cell_to_string(&row[7])
+                    .or_else(|| cell_to_string(&row[9]))
+                    .map(|name| cleanup_string(&name));
+                let comment = cell_to_string(&row[11]);
+                ExternalTransaction {
+                    date,
+                    booking_date: None,
+                    amount: cell_to_decimal(&row[1]),
+                    category: cell_to_string(&row[6]),
+                    description: concat(&other_account_name, &comment),
+                            other_account: cell_to_string(&row[8]),
+                    other_account_name,
+                    textual_date: None,
+                    transaction_fee: None,
+                }
+            })
+            .collect()
+    }
+            SheetFormat::BankAustria => {
+        range
+            .rows()
+            .skip(1)
+            .filter(|row| row[6].is_float())
+            .map(|row| {
+                let date = cell_to_german_date(&row[1]);
+                let booking_date = cell_to_german_date(&row[1]);
+                let amount = cell_to_decimal(&row[6]).unwrap();
+                let other_account = if amount.is_sign_negative() {
+                    cell_to_string(&row[12])
+                } else {
+                    cell_to_string(&row[9])
+                };
+                ExternalTransaction {
+                    date,
+                    booking_date,
+                    amount: Some(amount),
+                    category: None,
+                    description: cell_to_string(&row[3]).map(|s| s.trim().to_owned()),
+                    other_account,
+                    other_account_name: None,
+                    textual_date: None,
+                    transaction_fee: None,
+                }
+            })
+            .collect()
+    }
+            SheetFormat::Transferwise => {
+        range
+            .rows()
+            .skip(1)
+            .filter(|row| row[2].is_float())
+            .map(|row| {
+                let date = cell_to_english_date(&row[1]);
+                let amount = cell_to_decimal(&row[2]);
+                let other_account_name =
+                    cell_to_string(&row[13]).or_else(|| cell_to_string(&row[11]));
+                let other_account = cell_to_string(&row[12]);
+
+                ExternalTransaction {
+                    date,
+                    booking_date: None,
+                    amount,
+                    category: None,
+                    description: cell_to_string(&row[4]).map(|s| s.trim().to_owned()),
+                    other_account,
+                    other_account_name,
+                    textual_date: None,
+                    transaction_fee: cell_to_decimal(&row[14])
+                        .filter(|value| value.is_sign_positive()),
+                }
+            })
+            .collect()
+    }
+            SheetFormat::Magnet => {
+        range
+            .rows()
+            .skip(1)
+            .filter(|row| row[6].is_float())
+            .map(|row| {
+                let date = cell_to_date(&row[1]);
+                let booking_date = cell_to_date(&row[2]);
+                let amount = cell_to_decimal(&row[6]);
+                let other_account = cell_to_string(&row[4]);
+                let other_account_name = cell_to_string(&row[3]);
+                let description = cell_to_string(&row[5]);
+
+                ExternalTransaction {
+                    date,
+                    booking_date,
+                    amount,
+                    category: None,
+                    description: concat(&other_account_name, &description),
+                    other_account,
+                    other_account_name,
+                    textual_date: None,
+                    transaction_fee: None,
+                }
+            })
+            .collect()
+    }
+}
     }
 }
 
@@ -115,122 +225,3 @@ fn cleanup_string(input: &str) -> String {
         .replace("o:", "ö")
 }
 
-impl SheetFormat for GranitFormat {
-    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
-        range
-            .rows()
-            .filter(|row| row[1].is_float())
-            .map(|row| {
-                let date = cell_to_iso_date(&row[4]);
-                let other_account_name = cell_to_string(&row[7])
-                    .or_else(|| cell_to_string(&row[9]))
-                    .map(|name| cleanup_string(&name));
-                let comment = cell_to_string(&row[11]);
-                //.map(|x| x.replace("****1683",""));
-                //println!("Row is {:?} -> date {:?} comment {:?} other_name: {:?}", row, date, comment, other_account_name);
-                ExternalTransaction {
-                    date,
-                    booking_date: None,
-                    amount: cell_to_decimal(&row[1]),
-                    category: cell_to_string(&row[6]),
-                    description: concat(&other_account_name, &comment),
-                    other_account: cell_to_string(&row[8]), //.or_else(|| cell_to_string(&row[10])),
-                    other_account_name,
-                    textual_date: None,
-                    transaction_fee: None,
-                }
-            })
-            .collect()
-    }
-}
-
-impl SheetFormat for BankAustriaFormat {
-    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
-        range
-            .rows()
-            .skip(1)
-            .filter(|row| row[6].is_float())
-            .map(|row| {
-                let date = cell_to_german_date(&row[1]);
-                let booking_date = cell_to_german_date(&row[1]);
-                let amount = cell_to_decimal(&row[6]).unwrap();
-                let other_account = if amount.is_sign_negative() {
-                    cell_to_string(&row[12])
-                } else {
-                    cell_to_string(&row[9])
-                };
-                ExternalTransaction {
-                    date,
-                    booking_date,
-                    amount: Some(amount),
-                    category: None,
-                    description: cell_to_string(&row[3]).map(|s| s.trim().to_owned()),
-                    other_account,
-                    other_account_name: None,
-                    textual_date: None,
-                    transaction_fee: None,
-                }
-            })
-            .collect()
-    }
-}
-
-impl SheetFormat for TransferwiseFormat {
-    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
-        range
-            .rows()
-            .skip(1)
-            .filter(|row| row[2].is_float())
-            .map(|row| {
-                let date = cell_to_english_date(&row[1]);
-                let amount = cell_to_decimal(&row[2]);
-                let other_account_name =
-                    cell_to_string(&row[13]).or_else(|| cell_to_string(&row[11]));
-                let other_account = cell_to_string(&row[12]);
-
-                ExternalTransaction {
-                    date,
-                    booking_date: None,
-                    amount,
-                    category: None,
-                    description: cell_to_string(&row[4]).map(|s| s.trim().to_owned()),
-                    other_account,
-                    other_account_name,
-                    textual_date: None,
-                    transaction_fee: cell_to_decimal(&row[14])
-                        .filter(|value| value.is_sign_positive()),
-                }
-            })
-            .collect()
-    }
-}
-
-impl SheetFormat for MagnetFormat {
-    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction> {
-        range
-            .rows()
-            .skip(1)
-            .filter(|row| row[6].is_float())
-            .map(|row| {
-                let date = cell_to_date(&row[1]);
-                let booking_date = cell_to_date(&row[2]);
-                let amount = cell_to_decimal(&row[6]);
-                let other_account = cell_to_string(&row[4]);
-                let other_account_name = cell_to_string(&row[3]);
-                let description = cell_to_string(&row[5]);
-
-                ExternalTransaction {
-                    date,
-                    booking_date,
-                    amount,
-                    category: None,
-                    description: concat(&other_account_name, &description),
-                    other_account,
-                    other_account_name,
-                    textual_date: None,
-                    transaction_fee: None,
-                }
-            })
-            .collect()
-    }
-}
