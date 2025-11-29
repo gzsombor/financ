@@ -38,7 +38,7 @@ use console::{Term, style};
 use crate::cli::Cli;
 use crate::correlator::CorrelationCommand;
 use crate::external_models::Matching;
-use crate::formats::create_format;
+use crate::formats::SheetFormat;
 use crate::query::accounts::ToAccountQuery;
 use crate::query::currencies::CommoditiesQuery;
 use crate::query::transactions::TransactionQuery;
@@ -129,7 +129,7 @@ fn handle_commodities(cmd: CommoditiesArgs) -> Result<usize> {
 }
 
 fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
-    let format = cmd.format;
+    let requested_format = cmd.format;
 
     let mut connection = establish_connection();
     let matching = if cmd.by_booking_date {
@@ -149,7 +149,9 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
         counterparty_account_query: cmd.from_account.build(None),
         fee_account_query: cmd.fee_account.build(None),
     };
-    let format = create_format(&format)
-        .with_context(|| format!("Unknown format:'{}'!", format.unwrap_or_default()))?;
+    let format = requested_format
+        .clone()
+        .and_then(|x| SheetFormat::new(&x))
+        .with_context(|| format!("Unknown format:'{}'!", requested_format.unwrap_or_default()))?;
     cmd.execute(&mut connection, &term, &format)
 }

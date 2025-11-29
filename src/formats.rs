@@ -6,7 +6,7 @@ use crate::sheets::{
 use crate::utils::extract_date;
 use calamine::{Data, DataType, Range};
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Copy)]
 pub enum SheetFormat {
     Otp,
     Otp2020,
@@ -16,9 +16,9 @@ pub enum SheetFormat {
     Magnet,
 }
 
-pub fn create_format(name: &Option<String>) -> Option<SheetFormat> {
-    if let Some(format_name) = name {
-        match format_name.to_lowercase().as_ref() {
+impl SheetFormat {
+    pub fn new(name: &str) -> Option<SheetFormat> {
+        match name.to_lowercase().as_str() {
             "otp" => Some(SheetFormat::Otp),
             "otp2020" => Some(SheetFormat::Otp2020),
             "granit" => Some(SheetFormat::Granit),
@@ -27,8 +27,6 @@ pub fn create_format(name: &Option<String>) -> Option<SheetFormat> {
             "magnet" => Some(SheetFormat::Magnet),
             _ => None,
         }
-    } else {
-        Some(SheetFormat::Otp)
     }
 }
 
@@ -81,7 +79,7 @@ impl SheetParser for SheetFormat {
                     let date = cell_to_iso_date(&row[4]);
                     let other_account_name = cell_to_string(&row[7])
                         .or_else(|| cell_to_string(&row[9]))
-                        .map(|name| cleanup_string(&name));
+                        .map(cleanup_string);
                     let comment = cell_to_string(&row[11]);
                     ExternalTransaction {
                         date,
@@ -103,8 +101,10 @@ impl SheetParser for SheetFormat {
                 .map(|row| {
                     let date = cell_to_german_date(&row[1]);
                     let booking_date = cell_to_german_date(&row[1]);
-                    let amount = cell_to_decimal(&row[6]).unwrap();
-                    let other_account = if amount.is_sign_negative() {
+                    let amount = cell_to_decimal(&row[6]);
+                    let other_account = if let Some(amount_value) = amount
+                        && amount_value.is_sign_negative()
+                    {
                         cell_to_string(&row[12])
                     } else {
                         cell_to_string(&row[9])
@@ -112,7 +112,7 @@ impl SheetParser for SheetFormat {
                     ExternalTransaction {
                         date,
                         booking_date,
-                        amount: Some(amount),
+                        amount,
                         category: None,
                         description: cell_to_string(&row[3]).map(|s| s.trim().to_owned()),
                         other_account,
@@ -190,11 +190,11 @@ fn concat(first: &Option<String>, second: &Option<String>) -> Option<String> {
     }
 }
 
-fn cleanup_string(input: &str) -> String {
+fn cleanup_string(input: String) -> String {
     let casefix = if input.to_uppercase() == input {
         input.to_lowercase()
     } else {
-        input.to_owned()
+        input
     };
     casefix
         .replace("A'", "Á")
