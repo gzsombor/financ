@@ -94,8 +94,8 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
         None
     };
     let q = if let Some(account) = account_query.get_one(&mut connection, false) {
-        if let Some(target_account) = &move_target_account {
-            if target_account.commodity_guid != account.commodity_guid {
+        if let Some(target_account) = &move_target_account
+            && target_account.commodity_guid != account.commodity_guid {
                 term.write_line(&format!(
                     "The two account has different commodities, unable to transfer between: {} - {}",
                     style(&account).red(),
@@ -107,7 +107,6 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
                     target_account
                 ));
             }
-        }
 
         term.write_line(&format!(
             "Listing transactions in {}",

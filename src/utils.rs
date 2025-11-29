@@ -49,10 +49,8 @@ pub fn parse_sqlite_date(value: &Option<String>) -> Option<NaiveDateTime> {
 fn parse_date_2_format(value: &str) -> Option<NaiveDateTime> {
     if let Ok(ndt) = NaiveDateTime::parse_from_str(value, "%Y%m%d%H%M%S") {
         Some(ndt)
-    } else if let Ok(ndt2) = NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S") {
-        Some(ndt2)
     } else {
-        None
+        NaiveDateTime::parse_from_str(value, "%Y-%m-%d %H:%M:%S").ok()
     }
 }
 
