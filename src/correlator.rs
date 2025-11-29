@@ -102,14 +102,15 @@ impl TransactionCorrelator {
         let min = self.get_min_date();
         let max = self.get_max_date();
         if let Some(max_value) = max
-            && let Some(min_value) = min {
-                return self
-                    .transaction_map
-                    .range((Included(min_value), Included(max_value)))
-                    .flat_map(|(_, v)| v)
-                    .filter(|pairing| pairing.is_not_matched())
-                    .collect();
-            }
+            && let Some(min_value) = min
+        {
+            return self
+                .transaction_map
+                .range((Included(min_value), Included(max_value)))
+                .flat_map(|(_, v)| v)
+                .filter(|pairing| pairing.is_not_matched())
+                .collect();
+        }
         self.transaction_map
             .values()
             .flatten()
@@ -177,13 +178,13 @@ impl TransactionCorrelator {
             };
             if let Some(ext_amount) = external_transaction.get_amount()
                 && let Some(list) = self.transaction_map.get(&actual_date)
-                    && let Some(tr_pairing) = list
-                        .iter()
-                        .find(|&x| x.is_equal_amount(ext_amount) && x.is_not_matched())
-                    {
-                        tr_pairing.pair_with(external_transaction);
-                        return Some(tr_pairing);
-                    }
+                && let Some(tr_pairing) = list
+                    .iter()
+                    .find(|&x| x.is_equal_amount(ext_amount) && x.is_not_matched())
+            {
+                tr_pairing.pair_with(external_transaction);
+                return Some(tr_pairing);
+            }
         }
         None
     }

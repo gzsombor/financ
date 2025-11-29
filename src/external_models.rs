@@ -109,7 +109,6 @@ pub trait SheetParser {
     fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction>;
 }
 
-
 impl SheetDefinition {
     pub fn new(input_file: &str) -> Result<Self> {
         let workbook = open_workbook_auto(input_file)?; //.expect("Cannot open file");
