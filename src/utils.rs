@@ -2,8 +2,8 @@ use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use dotenv::dotenv;
 use regex::Regex;
-use rust_decimal::prelude::ToPrimitive;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::ToPrimitive;
 use std::env;
 
 pub fn establish_connection() -> SqliteConnection {
@@ -69,7 +69,7 @@ pub fn format_guid(guid: &str) -> String {
 
 pub fn get_value_or_empty(opt: &Option<String>) -> &str {
     match opt {
-        Some(ref x) => x,
+        Some(x) => x,
         None => "",
     }
 }

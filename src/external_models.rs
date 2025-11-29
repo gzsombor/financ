@@ -3,9 +3,9 @@ use std::fs::File;
 use std::{cell::RefCell, io::BufReader};
 
 use anyhow::Result;
-use calamine::{open_workbook_auto, Data, Range, Reader, Sheets};
+use calamine::{Data, Range, Reader, Sheets, open_workbook_auto};
 use chrono::NaiveDate;
-use console::{style, Term};
+use console::{Term, style};
 use rust_decimal::Decimal;
 
 use crate::models::{Split, Transaction};

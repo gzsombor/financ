@@ -31,9 +31,9 @@ use std::io;
 
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser};
-use clap_complete::{generate, Shell};
+use clap_complete::{Shell, generate};
 use cli::{Commands, CommoditiesArgs, CorrelateArgs, ListAccountsArgs, TransactionsArgs};
-use console::{style, Term};
+use console::{Term, style};
 
 use crate::cli::Cli;
 use crate::correlator::CorrelationCommand;

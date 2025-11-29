@@ -3,7 +3,7 @@ use std::ops::Bound::Included;
 
 use anyhow::Result;
 use chrono::{Duration, Local, NaiveDate};
-use console::{style, Key, Term};
+use console::{Key, Term, style};
 use diesel::prelude::*;
 use guid_create::GUID;
 

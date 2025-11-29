@@ -1,8 +1,8 @@
 use std::fmt;
 
 use chrono::NaiveDateTime;
-use rust_decimal::prelude::FromPrimitive;
 use rust_decimal::Decimal;
+use rust_decimal::prelude::FromPrimitive;
 
 use crate::schema::{accounts, splits, transactions};
 use crate::utils::{get_value_or_empty, parse_sqlite_date};

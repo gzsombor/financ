@@ -1,6 +1,6 @@
 use anyhow::Result;
 use chrono::naive::NaiveDate;
-use console::{style, Term};
+use console::{Term, style};
 use diesel::prelude::*;
 
 use crate::cli::TransactionsArgs;

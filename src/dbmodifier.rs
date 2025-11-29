@@ -5,7 +5,7 @@ use rust_decimal::Decimal;
 
 use crate::models::{Account, Commodities};
 use crate::schema::{splits, transactions};
-use crate::utils::{format_guid, format_sqlite_date, DenominatedValue};
+use crate::utils::{DenominatedValue, format_guid, format_sqlite_date};
 
 #[derive(Insertable, Debug)]
 #[diesel(table_name = splits)]

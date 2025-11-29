@@ -14,7 +14,7 @@ struct TransferwiseFormat;
 struct MagnetFormat;
 
 pub fn create_format(name: &Option<String>) -> Option<Box<dyn SheetFormat>> {
-    if let Some(ref format_name) = name {
+    if let Some(format_name) = name {
         match format_name.to_lowercase().as_ref() {
             "otp" => Some(Box::new(OtpFormat {})),
             "otp2020" => Some(Box::new(OtpFormat2020 {})),

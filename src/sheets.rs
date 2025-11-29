@@ -1,6 +1,6 @@
 use calamine::Data;
 use chrono::{NaiveDate, NaiveDateTime};
-use rust_decimal::{prelude::FromPrimitive, Decimal};
+use rust_decimal::{Decimal, prelude::FromPrimitive};
 
 // Format yyyy.mm.dd.
 pub fn cell_to_date(cell: &Data) -> Option<NaiveDate> {
