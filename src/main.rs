@@ -27,6 +27,7 @@ pub mod schema;
 mod sheets;
 pub mod utils;
 
+use std::fs;
 use std::io;
 
 use anyhow::{Context, Result};
@@ -38,7 +39,7 @@ use console::{Term, style};
 use crate::cli::Cli;
 use crate::correlator::CorrelationCommand;
 use crate::external_models::Matching;
-use crate::formats::SheetFormat;
+use crate::formats::{SheetFormat, build_rhai_engine};
 use crate::query::accounts::ToAccountQuery;
 use crate::query::currencies::CommoditiesQuery;
 use crate::query::transactions::TransactionQuery;
@@ -129,8 +130,6 @@ fn handle_commodities(cmd: CommoditiesArgs) -> Result<usize> {
 }
 
 fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
-    let requested_format = cmd.format;
-
     let mut connection = establish_connection();
     let matching = if cmd.by_booking_date {
         Matching::ByBooking
@@ -139,7 +138,7 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
     };
 
     let term = Term::stdout();
-    let mut cmd = CorrelationCommand {
+    let mut correlation_command = CorrelationCommand {
         input_file: cmd.input,
         sheet_name: cmd.sheet_name,
         matching,
@@ -149,9 +148,24 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
         counterparty_account_query: cmd.from_account.build(None),
         fee_account_query: cmd.fee_account.build(None),
     };
-    let format = requested_format
-        .clone()
-        .and_then(|x| SheetFormat::new(&x))
-        .with_context(|| format!("Unknown format:'{}'!", requested_format.unwrap_or_default()))?;
-    cmd.execute(&mut connection, &term, &format)
+
+    let format = if !cmd.rhai_scripts.is_empty() {
+        let engine = build_rhai_engine();
+        let mut ast = engine.compile("fn parse_sheet_row(row) { new_external_transaction(None, None, None, None, None, None, None, None, None) }").unwrap(); // Default script
+        for script_path in cmd.rhai_scripts {
+            let script_content = fs::read_to_string(&script_path)
+                .with_context(|| format!("Failed to read Rhai script from {:?}", script_path))?;
+            let compiled_script = engine
+                .compile(script_content)
+                .with_context(|| format!("Failed to compile Rhai script from {:?}", script_path))?;
+            ast = ast.merge(&compiled_script);
+        }
+        SheetFormat::new_rhai(ast, "parse_sheet_row".to_string())
+    } else {
+        cmd.format
+            .clone()
+            .and_then(|x| SheetFormat::new(&x))
+            .with_context(|| format!("Unknown format:'{}'!", cmd.format.unwrap_or_default()))?
+    };
+    correlation_command.execute(&mut connection, &term, &format)
 }

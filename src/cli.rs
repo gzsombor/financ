@@ -1,5 +1,6 @@
 use clap::{Parser, Subcommand};
 use clap_complete::Shell;
+use std::path::PathBuf;
 
 #[derive(Parser)]
 #[command(author, version, about, long_about = None)]
@@ -80,6 +81,10 @@ pub struct CorrelateArgs {
     // The format of the sheet
     #[arg(long = "format", short = 'f')]
     pub format: Option<String>,
+
+    // Rhai scripts to load for custom parsing
+    #[arg(long = "rhai-script", short = 'r')]
+    pub rhai_scripts: Vec<PathBuf>,
 
     // Match transactions by the booking date
     #[arg(long = "by-booking-date", short = 'd')]

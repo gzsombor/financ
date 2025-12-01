@@ -6,11 +6,13 @@ use anyhow::Result;
 use calamine::{Data, Range, Reader, Sheets, open_workbook_auto};
 use chrono::NaiveDate;
 use console::{Term, style};
+use rhai::{CustomType, Dynamic, EvalAltResult, Position, TypeBuilder};
 use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
 
 use crate::models::{Split, Transaction};
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Default, Eq, PartialEq, Serialize, Deserialize, CustomType)]
 pub struct ExternalTransaction {
     pub date: Option<NaiveDate>,
     pub booking_date: Option<NaiveDate>,
@@ -106,7 +108,7 @@ pub struct SheetDefinition {
 }
 
 pub trait SheetParser {
-    fn parse_sheet(&self, range: &Range<Data>) -> Vec<ExternalTransaction>;
+    fn parse_sheet(&self, range: &Range<Data>) -> Result<Vec<ExternalTransaction>>;
 }
 
 impl SheetDefinition {
@@ -134,7 +136,7 @@ impl SheetDefinition {
         };
         if let Ok(sheet) = self.workbook.worksheet_range(&sheet_name) {
             term.write_line(&format!("found sheet '{}'", style(&sheet_name).blue()))?;
-            let trans = format.parse_sheet(&sheet);
+            let trans = format.parse_sheet(&sheet)?;
             term.write_line(&format!(
                 "found {} transaction on sheet {}",
                 style(trans.len()).cyan(),
