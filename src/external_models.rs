@@ -6,7 +6,7 @@ use anyhow::Result;
 use calamine::{Data, Range, Reader, Sheets, open_workbook_auto};
 use chrono::NaiveDate;
 use console::{Term, style};
-use rhai::{CustomType, Dynamic, EvalAltResult, Position, TypeBuilder};
+use rhai::CustomType;
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 
@@ -50,6 +50,100 @@ impl fmt::Display for ExternalTransaction {
             write!(f, " - {}", description)?;
         }
         Ok(())
+    }
+}
+
+#[derive(Debug, Clone, CustomType)]
+pub struct ExternalTransactionBuilder {
+    date: Option<NaiveDate>,
+    booking_date: Option<NaiveDate>,
+    amount: Option<Decimal>,
+    category: Option<String>,
+    description: Option<String>,
+    other_account: Option<String>,
+    other_account_name: Option<String>,
+    textual_date: Option<NaiveDate>,
+    transaction_fee: Option<Decimal>,
+}
+
+impl ExternalTransactionBuilder {
+    pub fn new() -> Self {
+        ExternalTransactionBuilder {
+            date: None,
+            booking_date: None,
+            amount: None,
+            category: None,
+            description: None,
+            other_account: None,
+            other_account_name: None,
+            textual_date: None,
+            transaction_fee: None,
+        }
+    }
+
+    pub fn with_date(mut self, date: Option<NaiveDate>) -> Self {
+        self.date = date;
+        self
+    }
+
+    pub fn with_booking_date(mut self, booking_date: Option<NaiveDate>) -> Self {
+        self.booking_date = booking_date;
+        self
+    }
+
+    pub fn with_amount(mut self, amount: Option<Decimal>) -> Self {
+        self.amount = amount;
+        self
+    }
+
+    pub fn with_category(mut self, category: Option<String>) -> Self {
+        self.category = category;
+        self
+    }
+
+    pub fn with_description(mut self, description: Option<String>) -> Self {
+        self.description = description;
+        self
+    }
+
+    pub fn with_other_account(mut self, other_account: Option<String>) -> Self {
+        self.other_account = other_account;
+        self
+    }
+
+    pub fn with_other_account_name(mut self, other_account_name: Option<String>) -> Self {
+        self.other_account_name = other_account_name;
+        self
+    }
+
+    pub fn with_textual_date(mut self, textual_date: Option<NaiveDate>) -> Self {
+        self.textual_date = textual_date;
+        self
+    }
+
+    pub fn with_transaction_fee(mut self, transaction_fee: Option<Decimal>) -> Self {
+        self.transaction_fee = transaction_fee;
+        self
+    }
+
+    pub fn create(self) -> ExternalTransaction {
+        ExternalTransaction {
+            date: self.date,
+            booking_date: self.booking_date,
+            amount: self.amount,
+            category: self.category,
+            description: self.description,
+            other_account: self.other_account,
+            other_account_name: self.other_account_name,
+            textual_date: self.textual_date,
+            transaction_fee: self.transaction_fee,
+        }
+    }
+}
+
+impl Default for ExternalTransactionBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

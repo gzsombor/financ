@@ -1,7 +1,7 @@
 use std::path::PathBuf;
 use std::sync::Arc;
 
-use crate::external_models::{ExternalTransaction, SheetParser};
+use crate::external_models::{ExternalTransaction, ExternalTransactionBuilder, SheetParser};
 use crate::sheets::{
     cell_to_date, cell_to_datetime, cell_to_decimal, cell_to_english_date, cell_to_german_date,
     cell_to_iso_date, cell_to_string,
@@ -9,7 +9,6 @@ use crate::sheets::{
 use crate::utils::extract_date;
 use anyhow::Result;
 use calamine::{Data, DataType, Range};
-use chrono::{NaiveDate, NaiveDateTime, NaiveTime};
 use rhai::{AST, Dynamic, Engine, Scope};
 
 use rust_decimal::Decimal;
@@ -197,7 +196,7 @@ impl SheetParser for SheetFormat {
 }
 
 #[derive(Debug)]
-struct Executor {
+pub(crate) struct Executor {
     engine: Engine,
     ast: Option<AST>,
     parser_fn: Option<String>,
@@ -259,7 +258,20 @@ impl Executor {
             let transaction: ExternalTransaction = self
                 .engine
                 .call_fn(&mut scope, ast, parser_fn, (rhai_row,))
-                .map_err(|e| anyhow::anyhow!("Rhai script execution error: {}", e))?;
+                .map_err(|e| {
+                    let pos = e.position();
+                    if let Some(line) = pos.line()
+                        && let Some(source_str) = ast.source()
+                    {
+                        // Get the specific line for better error reporting
+                        let error_line = source_str.lines().nth(line.saturating_sub(1));
+                        if let Some(line_content) = error_line {
+                            println!("Error on line {}: {}", line, line_content);
+                        }
+                    }
+
+                    anyhow::anyhow!("Rhai script execution error: {}", e)
+                })?;
             transactions.push(transaction);
         }
         Ok(transactions)
@@ -283,7 +295,7 @@ fn convert_to_rhai_row(row: &[Data]) -> Vec<rhai::Dynamic> {
             //     let naive_datetime = NaiveDateTime::new(naive_date, time);
             //     Dynamic::from(naive_datetime)
             // },
-            _ => Dynamic::from(cell.clone())
+            _ => Dynamic::from(cell.clone()),
         })
         .collect();
     rhai_row
@@ -424,26 +436,24 @@ pub fn build_rhai_engine() -> Engine {
             if let (Ok(year), Ok(month), Ok(day)) =
                 (year.try_into(), month.try_into(), day.try_into())
             {
-                Ok(chrono::NaiveDate::from_ymd_opt(year, month, day))
+                chrono::NaiveDate::from_ymd_opt(year, month, day)
             } else {
-                Err(())
+                None
             }
         },
     );
 
     // Register Decimal type and constructors manually
     engine.register_type::<Decimal>();
-    engine.register_fn("new_decimal_from_f64", |val: f64| {
-        Decimal::from_f64(val)
-    });
+    engine.register_fn("new_decimal_from_f64", |val: f64| Decimal::from_f64(val));
     engine.register_fn("new_decimal_from_string", |val: String| {
         val.parse::<Decimal>()
     });
 
-    // Register ExternalTransaction type
+    // Register ExternalTransaction type and keep old function for backward compatibility
     engine.register_type::<ExternalTransaction>();
     engine.register_fn(
-        "new_transaction",
+        "new_external_transaction",
         |date_dyn: rhai::Dynamic,
          booking_date_dyn: rhai::Dynamic,
          amount_dyn: rhai::Dynamic,
@@ -454,7 +464,7 @@ pub fn build_rhai_engine() -> Engine {
          textual_date_dyn: rhai::Dynamic,
          transaction_fee_dyn: rhai::Dynamic| {
             println!(
-                "new_transaction: date: {:?} amount: {:?}, description: {:?}",
+                "new_external_transaction: date: {:?} amount: {:?}, description: {:?}",
                 date_dyn, amount_dyn, description_dyn
             );
             ExternalTransaction {
@@ -471,6 +481,91 @@ pub fn build_rhai_engine() -> Engine {
         },
     );
 
+    // Register ExternalTransactionBuilder type and methods for cleaner API
+    engine.register_type::<ExternalTransactionBuilder>();
+    engine.register_fn("new_transaction", || ExternalTransactionBuilder::new());
+    engine.register_fn(
+        "with_date",
+        |builder: ExternalTransactionBuilder, date: Option<chrono::NaiveDate>| {
+            builder.with_date(date)
+        },
+    );
+    engine.register_fn(
+        "with_booking_date",
+        |builder: ExternalTransactionBuilder, booking_date: Option<chrono::NaiveDate>| {
+            builder.with_booking_date(booking_date)
+        },
+    );
+    engine.register_fn(
+        "with_amount",
+        |builder: ExternalTransactionBuilder, amount: Option<rust_decimal::Decimal>| {
+            builder.with_amount(amount)
+        },
+    );
+    engine.register_fn(
+        "with_category",
+        |builder: ExternalTransactionBuilder, category: Option<String>| {
+            builder.with_category(category)
+        },
+    );
+    engine.register_fn(
+        "with_category",
+        |builder: ExternalTransactionBuilder, category: String| {
+            builder.with_category(Some(category))
+        },
+    );
+    engine.register_fn(
+        "with_description",
+        |builder: ExternalTransactionBuilder, description: Option<String>| {
+            builder.with_description(description)
+        },
+    );
+    engine.register_fn(
+        "with_description",
+        |builder: ExternalTransactionBuilder, description: String| {
+            builder.with_description(Some(description))
+        },
+    );
+    engine.register_fn(
+        "with_other_account",
+        |builder: ExternalTransactionBuilder, other_account: Option<String>| {
+            builder.with_other_account(other_account)
+        },
+    );
+    engine.register_fn(
+        "with_other_account",
+        |builder: ExternalTransactionBuilder, other_account: String| {
+            builder.with_other_account(Some(other_account))
+        },
+    );
+    engine.register_fn(
+        "with_other_account_name",
+        |builder: ExternalTransactionBuilder, other_account_name: Option<String>| {
+            builder.with_other_account_name(other_account_name)
+        },
+    );
+    engine.register_fn(
+        "with_other_account_name",
+        |builder: ExternalTransactionBuilder, other_account_name: String| {
+            builder.with_other_account_name(Some(other_account_name))
+        },
+    );
+    engine.register_fn(
+        "with_textual_date",
+        |builder: ExternalTransactionBuilder, textual_date: Option<chrono::NaiveDate>| {
+            builder.with_textual_date(textual_date)
+        },
+    );
+    engine.register_fn(
+        "with_transaction_fee",
+        |builder: ExternalTransactionBuilder, transaction_fee: Option<rust_decimal::Decimal>| {
+            builder.with_transaction_fee(transaction_fee)
+        },
+    );
+    engine.register_fn("create", |builder: ExternalTransactionBuilder| {
+        builder.create()
+    });
+
     engine
 }
 
@@ -479,28 +574,34 @@ mod tests {
     use super::*;
     use anyhow::Result;
     use calamine::Range;
-    use chrono::NaiveDate;
+
     use rhai::Dynamic;
     use rust_decimal::Decimal;
     use std::fs;
     use std::io::Write;
     use std::path::PathBuf;
 
-
     #[test]
     fn test_rhai_sheet_parser() -> Result<()> {
-        // 1. Create a dummy Rhai script file manually
+        // 1. Create a dummy Rhai script file using the cleaner builder pattern
         let script_content = r#"
             fn parse_sheet_row(row) {
-                let date = cell_to_date(row[0]);
-                let x = debug(date);
-                let amount_val = get_float(row[1]); // Use get_float() directly
+                // Extract amount and description from row
+                let amount_val = get_float(row[1]);
                 let description_str = row[2].to_string();
 
-                let amount = new_decimal_from_f64(amount_val); // Use new_decimal_from_f64
-                if date {
-                    new_transaction(date, (), amount, (), description_str, (), (), (), ())
-                }
+                // Convert amount to decimal
+                let amount = new_decimal_from_f64(amount_val);
+
+                // Create a fixed date for testing
+                let date = create_naive_date_ymd(2023, 1, 15);
+
+                // Create transaction using builder pattern (much cleaner!)
+                new_transaction()
+                    .with_date(date)
+                    .with_amount(amount)
+                    .with_description(description_str)
+                    .create()
             }
         "#;
 
@@ -522,8 +623,8 @@ mod tests {
             executor: Arc::new(executor),
         };
 
-        // 3. Create a sample Range<Data>
-        let mut range = Range::new((0, 0), (1, 3));
+        // 3. Create a sample Range<Data> with only one row
+        let mut range = Range::new((0, 0), (0, 3));
         range.set_value((0, 0), Data::String("2023.01.15.".to_string()));
         range.set_value((0, 1), Data::Float(123.45));
         range.set_value((0, 2), Data::String("Test Description".to_string()));
@@ -630,5 +731,62 @@ mod tests {
         // Test unit conversion
         let unit_dyn = Dynamic::UNIT;
         assert_eq!(dynamic_to_option_string(unit_dyn), None);
+    }
+
+    #[test]
+    fn test_better_rhai_style_builder_pattern() -> Result<()> {
+        // Test the better.rhai style builder pattern
+        let script_content = r#"
+            fn parse_sheet_row(row) {
+                let amount_val = get_float(row[1]);
+                let description_str = row[2].to_string();
+                let date = create_naive_date_ymd(2023, 1, 15);
+                let amount = new_decimal_from_f64(amount_val);
+                
+                // Create transaction using builder pattern (like better.rhai)
+                new_transaction()
+                    .with_date(date)
+                    .with_amount(amount)
+                    .with_description(description_str)
+                    .create()
+            }
+        "#;
+
+        let script_file_name = "test_better_style.rhai";
+        let script_path = PathBuf::from(script_file_name);
+        let mut file = fs::File::create(&script_path)?;
+        file.write_all(script_content.as_bytes())?;
+
+        let _cleanup = scopeguard::guard(script_path.clone(), |path| {
+            let _ = fs::remove_file(path);
+        });
+
+        let mut executor = Executor::new();
+        executor.add_script(&script_path)?;
+        executor.parser_fn = Some("parse_sheet_row".to_string());
+        let rhai_format = SheetFormat::Rhai {
+            executor: Arc::new(executor),
+        };
+
+        let mut range = Range::new((0, 0), (0, 3));
+        range.set_value((0, 0), Data::String("2023.01.15.".to_string()));
+        range.set_value((0, 1), Data::Float(123.45));
+        range.set_value((0, 2), Data::String("Test Description".to_string()));
+
+        let transactions = rhai_format.parse_sheet(&range)?;
+
+        assert_eq!(transactions.len(), 1);
+        let transaction = &transactions[0];
+        assert_eq!(
+            transaction.date,
+            Some(NaiveDate::from_ymd_opt(2023, 1, 15).unwrap())
+        );
+        assert_eq!(transaction.amount, Some(Decimal::new(12345, 2)));
+        assert_eq!(
+            transaction.description,
+            Some("Test Description".to_string())
+        );
+
+        Ok(())
     }
 }
