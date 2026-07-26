@@ -15,7 +15,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
+    - name: Output rust version for educational purposes
+      run: rustup --version
     - name: Build
       run: cargo build --verbose
     - name: Run tests
