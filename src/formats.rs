@@ -574,6 +574,7 @@ mod tests {
     use super::*;
     use anyhow::Result;
     use calamine::Range;
+    use chrono::NaiveDate;
 
     use rhai::Dynamic;
     use rust_decimal::Decimal;
