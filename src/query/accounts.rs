@@ -4,7 +4,7 @@ use diesel::prelude::*;
 
 use crate::{
     cli::{DefaultAccountParams, FeeAccountParams, FromAccountParams, TargetAccountParams},
-    models::Account,
+    models::{Account, CommodityInfo},
     schema::commodities,
 };
 
@@ -112,8 +112,13 @@ impl AccountQuery {
             query = query.filter(accounts::commodity_guid.like(format!("%{}%", commodity_id)));
         }
         if let Some(ref commodity_name) = self.commodity_name_filter {
+            let pattern = format!("%{}%", commodity_name);
             let subquery = commodities::table
-                .filter(commodities::fullname.like(format!("%{}%", commodity_name)))
+                .filter(
+                    commodities::fullname
+                        .like(pattern.clone())
+                        .or(commodities::mnemonic.like(pattern)),
+                )
                 .select(commodities::guid.nullable())
                 .into_boxed();
             query = query.filter(accounts::commodity_guid.eq_any(subquery));
@@ -128,8 +133,13 @@ impl AccountQuery {
     pub fn execute_and_display(&self, connection: &mut SqliteConnection) {
         let results = self.execute(connection);
         println!("Displaying {} accounts", results.len());
-        for account in results {
-            account.display();
+        let commodities = CommodityInfo::resolve_for_accounts(connection, &results);
+        for account in &results {
+            let commodity = account
+                .commodity_guid
+                .as_ref()
+                .and_then(|g| commodities.get(g));
+            account.display(commodity);
         }
     }
 
@@ -145,8 +155,10 @@ impl AccountQuery {
                     "Account filter should pick only one account, found : {}",
                     &account_list.len()
                 );
-                for acc in account_list {
-                    acc.display();
+                let commodities = CommodityInfo::resolve_for_accounts(connection, &account_list);
+                for acc in &account_list {
+                    let commodity = acc.commodity_guid.as_ref().and_then(|g| commodities.get(g));
+                    acc.display(commodity);
                 }
             }
             return None;

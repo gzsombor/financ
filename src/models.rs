@@ -1,9 +1,12 @@
+use std::collections::HashMap;
 use std::fmt;
 
 use chrono::NaiveDateTime;
+use diesel::prelude::*;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::FromPrimitive;
 
+use crate::query::currencies::CommoditiesQuery;
 use crate::schema::{accounts, splits, transactions};
 use crate::utils::{get_value_or_empty, parse_sqlite_date};
 
@@ -68,14 +71,50 @@ pub struct Commodities {
     pub quote_tz: Option<String>,
 }
 
+pub struct CommodityInfo {
+    pub guid: String,
+    pub mnemonic: String,
+    pub fullname: Option<String>,
+}
+
+impl fmt::Display for CommodityInfo {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match &self.fullname {
+            Some(full) => write!(f, "{} ({})", self.mnemonic, full),
+            None => write!(f, "{}", self.mnemonic),
+        }
+    }
+}
+
+impl CommodityInfo {
+    pub fn resolve_for_accounts(
+        connection: &mut SqliteConnection,
+        accounts: &[Account],
+    ) -> HashMap<String, CommodityInfo> {
+        let mut commodities: HashMap<String, CommodityInfo> = HashMap::new();
+        for guid in accounts.iter().filter_map(|a| a.commodity_guid.as_deref()) {
+            if !commodities.contains_key(guid) {
+                if let Some(c) = CommoditiesQuery::get_info_by_guid(connection, guid) {
+                    commodities.insert(guid.to_string(), c);
+                }
+            }
+        }
+        commodities
+    }
+}
+
 impl Account {
-    pub fn display(&self) {
+    pub fn display(&self, commodity: Option<&CommodityInfo>) {
+        let commodity_display = match commodity {
+            Some(c) => c.to_string(),
+            None => self.commodity_guid.clone().unwrap_or_default(),
+        };
         println!(
             "[{}]<id= {}>(parent= {},commodity= {}) - {} {}",
             self.account_type,
             self.guid,
             get_value_or_empty(&self.parent_guid),
-            get_value_or_empty(&self.commodity_guid),
+            commodity_display,
             self.name,
             get_value_or_empty(&self.description)
         );

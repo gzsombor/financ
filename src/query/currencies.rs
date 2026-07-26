@@ -1,7 +1,10 @@
 use anyhow::Result;
 use diesel::prelude::*;
 
-use crate::{cli::CommoditiesArgs, models::Commodities};
+use crate::{
+    cli::CommoditiesArgs,
+    models::{Commodities, CommodityInfo},
+};
 
 pub struct CommoditiesQuery {
     pub limit: i64,
@@ -55,6 +58,14 @@ impl CommoditiesQuery {
             .load::<Commodities>(connection)
             .expect("Error loading a commodity")
             .pop()
+    }
+
+    pub fn get_info_by_guid(connection: &mut SqliteConnection, id: &str) -> Option<CommodityInfo> {
+        Self::get_by_guid(connection, id).map(|c| CommodityInfo {
+            guid: c.guid,
+            mnemonic: c.mnemonic,
+            fullname: c.fullname,
+        })
     }
 }
 
