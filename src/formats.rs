@@ -272,7 +272,9 @@ impl Executor {
 
                     anyhow::anyhow!("Rhai script execution error: {}", e)
                 })?;
-            transactions.push(transaction);
+            if !transaction.is_empty() {
+                transactions.push(transaction);
+            }
         }
         Ok(transactions)
     }
@@ -288,13 +290,12 @@ fn convert_to_rhai_row(row: &[Data]) -> Vec<rhai::Dynamic> {
             Data::Float(f) => (*f).into(),
             Data::Int(i) => (*i as f64).into(), // Rhai numbers are f64 by default
             Data::Bool(b) => (*b).into(),
-            // Data::DateTime(excel_date_time) => {
-            //     let (year,month,day,hour,minute,second, milli) = excel_date_time.to_ymd_hms_milli();
-            //     let naive_date = NaiveDate::from_ymd_opt(year.into(), month.into(), day.into()).expect("Date exists");
-            //     let time = NaiveTime::from_hms_milli_opt(hour.into(), minute.into(), second.into(), milli.into()).expect("Time exists");
-            //     let naive_datetime = NaiveDateTime::new(naive_date, time);
-            //     Dynamic::from(naive_datetime)
-            // },
+            Data::DateTime(excel_date_time) => excel_date_time
+                .as_datetime()
+                .map(|date_time| Dynamic::from(date_time.format("%Y.%m.%d.").to_string()))
+                .unwrap_or_default(),
+            Data::DateTimeIso(date_time) => date_time.clone().into(),
+            Data::Error(_) => rhai::Dynamic::UNIT,
             _ => Dynamic::from(cell.clone()),
         })
         .collect();
@@ -384,7 +385,9 @@ fn dynamic_to_option_decimal(d: rhai::Dynamic) -> Option<rust_decimal::Decimal> 
     if d.is_unit() {
         None
     } else {
-        d.try_cast::<rust_decimal::Decimal>()
+        d.clone()
+            .try_cast::<rust_decimal::Decimal>()
+            .or_else(|| d.try_cast::<Option<rust_decimal::Decimal>>().flatten())
     }
 }
 
@@ -393,8 +396,41 @@ fn dynamic_to_option_string(d: rhai::Dynamic) -> Option<String> {
     if d.is_unit() {
         None
     } else {
-        d.try_cast::<String>()
+        d.clone()
+            .try_cast::<String>()
+            .or_else(|| d.try_cast::<Option<String>>().flatten())
     }
+}
+
+// Check whether a rhai value represents a present value: a non-unit value
+// that is not an empty (None) Option. Rhai keeps Option<T> return values of
+// registered functions as actual Option<T> values, unrelated to the unit.
+fn has_value(d: rhai::Dynamic) -> bool {
+    if d.is_unit() {
+        return false;
+    }
+    if d.clone().try_cast::<Option<chrono::NaiveDate>>().is_some() {
+        return d.try_cast::<Option<chrono::NaiveDate>>().unwrap().is_some();
+    }
+    if d.clone().try_cast::<Option<chrono::NaiveDateTime>>().is_some() {
+        return d.try_cast::<Option<chrono::NaiveDateTime>>().unwrap().is_some();
+    }
+    if d.clone().try_cast::<Option<String>>().is_some() {
+        return d.try_cast::<Option<String>>().unwrap().is_some();
+    }
+    if d.clone().try_cast::<Option<rust_decimal::Decimal>>().is_some() {
+        return d.try_cast::<Option<rust_decimal::Decimal>>().unwrap().is_some();
+    }
+    if d.clone().try_cast::<Option<f64>>().is_some() {
+        return d.try_cast::<Option<f64>>().unwrap().is_some();
+    }
+    if d.clone().try_cast::<Option<i64>>().is_some() {
+        return d.try_cast::<Option<i64>>().unwrap().is_some();
+    }
+    if d.clone().try_cast::<Option<bool>>().is_some() {
+        return d.try_cast::<Option<bool>>().unwrap().is_some();
+    }
+    true
 }
 
 pub fn build_rhai_engine() -> Engine {
@@ -427,8 +463,15 @@ pub fn build_rhai_engine() -> Engine {
         println!("debug: {:?}", d);
         format!("DEBUG: {:?}", d)
     });
+    engine.register_fn("is_unit", |value: rhai::Dynamic| value.is_unit());
+    engine.register_fn("has_value", |d: rhai::Dynamic| has_value(d));
     engine.register_fn("extract_date", extract_date);
-    engine.register_fn("concat", concat);
+    engine.register_fn(
+        "concat",
+        |first: Option<String>, second: Option<String>| {
+            concat(&first, &second)
+        },
+    );
     engine.register_fn("cleanup_string", cleanup_string);
     engine.register_fn(
         "create_naive_date_ymd",
@@ -573,7 +616,7 @@ pub fn build_rhai_engine() -> Engine {
 mod tests {
     use super::*;
     use anyhow::Result;
-    use calamine::Range;
+    use calamine::{ExcelDateTime, ExcelDateTimeType, Range};
     use chrono::NaiveDate;
 
     use rhai::Dynamic;
@@ -786,6 +829,159 @@ mod tests {
         assert_eq!(
             transaction.description,
             Some("Test Description".to_string())
+        );
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_has_value() {
+        assert!(!has_value(Dynamic::UNIT));
+        assert!(!has_value(Dynamic::from(None::<String>)));
+        assert!(has_value(Dynamic::from(Some("x".to_string()))));
+        assert!(!has_value(Dynamic::from(None::<Decimal>)));
+        assert!(has_value(Dynamic::from(Some(Decimal::new(1, 0)))));
+        assert!(!has_value(Dynamic::from(None::<i64>)));
+        assert!(has_value(Dynamic::from(Some(42_i64))));
+        assert!(has_value(Dynamic::from(3.14_f64)));
+        assert!(has_value(Dynamic::from(42_i64)));
+        assert!(has_value(Dynamic::from(true)));
+        assert!(has_value(Dynamic::from("plain")));
+        assert!(!has_value(Dynamic::from(None::<NaiveDate>)));
+        assert!(has_value(Dynamic::from(Some(
+            NaiveDate::from_ymd_opt(2023, 1, 15).unwrap()
+        ))));
+    }
+
+    #[test]
+    fn test_dynamic_to_option_string_with_option() {
+        // Rhai stores the whole Option<T> as the value, verify both conversions
+        assert_eq!(
+            dynamic_to_option_string(Dynamic::from(Some("hello".to_string()))),
+            Some("hello".to_string())
+        );
+        assert_eq!(
+            dynamic_to_option_string(Dynamic::from(None::<String>)),
+            None
+        );
+        assert_eq!(dynamic_to_option_string(Dynamic::UNIT), None);
+    }
+
+    #[test]
+    fn test_dynamic_to_option_decimal_with_option() {
+        assert_eq!(
+            dynamic_to_option_decimal(Dynamic::from(Some(Decimal::new(12345, 2)))),
+            Some(Decimal::new(12345, 2))
+        );
+        assert_eq!(dynamic_to_option_decimal(Dynamic::from(None::<Decimal>)), None);
+        assert_eq!(dynamic_to_option_decimal(Dynamic::UNIT), None);
+    }
+
+    #[test]
+    fn test_convert_to_rhai_row_datetime() {
+        // Data::DateTime cells are converted to a parseable "yyyy.mm.dd." string
+        let row = vec![
+            Data::DateTime(ExcelDateTime::new(
+                44060.0,
+                ExcelDateTimeType::DateTime,
+                false,
+            )),
+            Data::DateTimeIso("2023-01-15".to_string()),
+            Data::Error(calamine::CellErrorType::NA),
+        ];
+        let rhai_row = convert_to_rhai_row(&row);
+        assert_eq!(rhai_row[0].clone().cast::<String>(), "2020.08.17.");
+        assert_eq!(rhai_row[1].clone().cast::<String>(), "2023-01-15");
+        assert_eq!(rhai_row[2].type_id(), Dynamic::UNIT.type_id());
+        assert!(has_value(rhai_row[0].clone()));
+        assert!(!has_value(rhai_row[2].clone()));
+    }
+
+    #[test]
+    fn test_rhai_script_can_call_concat() -> Result<()> {
+        // concat must be callable from a script with owned Option<String> args
+        let script_content = r#"
+            fn parse_sheet_row(row) {
+                let part1 = cell_to_string(row[0]);
+                let part2 = cell_to_string(row[1]);
+                new_transaction().with_description(concat(part1, part2)).create()
+            }
+        "#;
+
+        let script_file_name = "test_concat_script.rhai";
+        let script_path = PathBuf::from(script_file_name);
+        let mut file = fs::File::create(&script_path)?;
+        file.write_all(script_content.as_bytes())?;
+
+        let _cleanup = scopeguard::guard(script_path.clone(), |path| {
+            let _ = fs::remove_file(path);
+        });
+
+        let mut executor = Executor::new();
+        executor.add_script(&script_path)?;
+        executor.parser_fn = Some("parse_sheet_row".to_string());
+        let rhai_format = SheetFormat::Rhai {
+            executor: Arc::new(executor),
+        };
+
+        let mut range = Range::new((0, 0), (0, 1));
+        range.set_value((0, 0), Data::String("Hello".to_string()));
+        range.set_value((0, 1), Data::String("World".to_string()));
+
+        let transactions = rhai_format.parse_sheet(&range)?;
+
+        assert_eq!(transactions.len(), 1);
+        assert_eq!(transactions[0].description, Some("Hello World".to_string()));
+
+        Ok(())
+    }
+
+    #[test]
+    fn test_rhai_parser_skips_empty_transactions() -> Result<()> {
+        // A script returning an empty transaction (e.g. for the header row)
+        // should have those rows dropped from the parsed result.
+        let script_content = r#"
+            fn parse_sheet_row(row) {
+                let date = cell_to_date(row[0]);
+                if has_value(date) {
+                    new_transaction().with_date(date).create()
+                } else {
+                    new_transaction().create()
+                }
+            }
+        "#;
+
+        let script_file_name = "test_skip_empty.rhai";
+        let script_path = PathBuf::from(script_file_name);
+        let mut file = fs::File::create(&script_path)?;
+        file.write_all(script_content.as_bytes())?;
+
+        let _cleanup = scopeguard::guard(script_path.clone(), |path| {
+            let _ = fs::remove_file(path);
+        });
+
+        let mut executor = Executor::new();
+        executor.add_script(&script_path)?;
+        executor.parser_fn = Some("parse_sheet_row".to_string());
+        let rhai_format = SheetFormat::Rhai {
+            executor: Arc::new(executor),
+        };
+
+        let mut range = Range::new((0, 0), (2, 0));
+        range.set_value((0, 0), Data::String("Header".to_string()));
+        range.set_value((1, 0), Data::String("2023.01.15.".to_string()));
+        range.set_value((2, 0), Data::String("2023.02.20.".to_string()));
+
+        let transactions = rhai_format.parse_sheet(&range)?;
+
+        assert_eq!(transactions.len(), 2);
+        assert_eq!(
+            transactions[0].date,
+            Some(NaiveDate::from_ymd_opt(2023, 1, 15).unwrap())
+        );
+        assert_eq!(
+            transactions[1].date,
+            Some(NaiveDate::from_ymd_opt(2023, 2, 20).unwrap())
         );
 
         Ok(())

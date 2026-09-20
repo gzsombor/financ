@@ -154,6 +154,18 @@ pub enum Matching {
 }
 
 impl ExternalTransaction {
+    pub fn is_empty(&self) -> bool {
+        self.date.is_none()
+            && self.booking_date.is_none()
+            && self.amount.is_none()
+            && self.category.is_none()
+            && self.description.is_none()
+            && self.other_account.is_none()
+            && self.other_account_name.is_none()
+            && self.textual_date.is_none()
+            && self.transaction_fee.is_none()
+    }
+
     // TODO: make it configurable
     pub fn get_matching_date(&self, matching: Matching) -> Option<NaiveDate> {
         match matching {
