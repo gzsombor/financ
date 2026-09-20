@@ -20,8 +20,8 @@ regex = "1"
 console = "0.16"
 guid-create = "0.5"
 anyhow = "1.0"
-rust_decimal = "1.42"
-rhai = "1.25"
+rust_decimal = "1.43"
+rhai = "1.26"
 serde = { version = "1.0", features = ["derive"] }
 scopeguard = "1.2.0"
 
