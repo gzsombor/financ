@@ -1,5 +1,6 @@
 use std::fmt;
 
+use anyhow::{Context, Result};
 use diesel::prelude::*;
 
 use crate::{
@@ -85,7 +86,7 @@ impl ToAccountQuery for FeeAccountParams {
 }
 
 impl AccountQuery {
-    pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<Account> {
+    pub fn execute(&self, connection: &mut SqliteConnection) -> Result<Vec<Account>> {
         use crate::schema::accounts;
 
         let mut query = accounts::table.into_boxed();
@@ -127,13 +128,13 @@ impl AccountQuery {
         query
             .limit(self.limit)
             .load::<Account>(connection)
-            .expect("Error loading accounts")
+            .context("Error loading accounts")
     }
 
-    pub fn execute_and_display(&self, connection: &mut SqliteConnection) {
-        let results = self.execute(connection);
+    pub fn execute_and_display(&self, connection: &mut SqliteConnection) -> Result<()> {
+        let results = self.execute(connection)?;
         println!("Displaying {} accounts", results.len());
-        let commodities = CommodityInfo::resolve_for_accounts(connection, &results);
+        let commodities = CommodityInfo::resolve_for_accounts(connection, &results)?;
         for account in &results {
             let commodity = account
                 .commodity_guid
@@ -141,29 +142,30 @@ impl AccountQuery {
                 .and_then(|g| commodities.get(g));
             account.display(commodity);
         }
+        Ok(())
     }
 
     pub fn get_one(
         &self,
         connection: &mut SqliteConnection,
         show_warning: bool,
-    ) -> Option<Account> {
-        let mut account_list = self.execute(connection);
+    ) -> Result<Option<Account>> {
+        let mut account_list = self.execute(connection)?;
         if account_list.len() != 1 {
             if show_warning {
                 println!(
                     "Account filter should pick only one account, found : {}",
                     account_list.len()
                 );
-                let commodities = CommodityInfo::resolve_for_accounts(connection, &account_list);
+                let commodities = CommodityInfo::resolve_for_accounts(connection, &account_list)?;
                 for acc in &account_list {
                     let commodity = acc.commodity_guid.as_ref().and_then(|g| commodities.get(g));
                     acc.display(commodity);
                 }
             }
-            return None;
+            return Ok(None);
         }
-        account_list.pop()
+        Ok(account_list.pop())
     }
 }
 

@@ -28,6 +28,7 @@ pub mod utils;
 use std::fs;
 use std::io;
 use std::path::PathBuf;
+use std::process::ExitCode;
 
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser};
@@ -46,18 +47,30 @@ use crate::query::currencies::CommoditiesQuery;
 use crate::query::transactions::TransactionQuery;
 use crate::utils::establish_connection;
 
-fn main() {
+fn main() -> ExitCode {
     let cli = Cli::parse();
 
-    match cli.command {
-        Commands::ListAccounts(args) => handle_list_accounts(&args),
-        Commands::Transactions(args) => handle_list_entries(args),
-        Commands::Commodities(args) => Ok(handle_commodities(args)),
-        Commands::Correlate(args) => handle_correlate(args),
-        Commands::EvalScript(args) => handle_eval_script(args),
-        Commands::Completions { shell } => Ok(handle_shell_completions(shell)),
+    match run(cli) {
+        Ok(()) => ExitCode::SUCCESS,
+        Err(error) => {
+            eprintln!("Error: {error:#}");
+            ExitCode::FAILURE
+        }
     }
-    .unwrap();
+}
+
+fn run(cli: Cli) -> Result<()> {
+    match cli.command {
+        Commands::ListAccounts(args) => handle_list_accounts(&args).map(|_| ()),
+        Commands::Transactions(args) => handle_list_entries(args).map(|_| ()),
+        Commands::Commodities(args) => handle_commodities(args).map(|_| ()),
+        Commands::Correlate(args) => handle_correlate(args).map(|_| ()),
+        Commands::EvalScript(args) => handle_eval_script(args).map(|_| ()),
+        Commands::Completions { shell } => {
+            handle_shell_completions(shell);
+            Ok(())
+        }
+    }
 }
 
 fn handle_shell_completions(shell: Shell) -> usize {
@@ -68,20 +81,20 @@ fn handle_shell_completions(shell: Shell) -> usize {
 }
 
 fn handle_list_accounts(args: &ListAccountsArgs) -> Result<usize> {
-    let mut connection = establish_connection();
+    let mut connection = establish_connection()?;
     let q = args.account.build(args.limit);
-    q.execute_and_display(&mut connection);
+    q.execute_and_display(&mut connection)?;
     Ok(0)
 }
 
 fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
     let term = Term::stdout();
 
-    let mut connection = establish_connection();
+    let mut connection = establish_connection()?;
     let account_query = args.account.build(None);
     let move_target_account = if args.move_split {
         let target_account_query = args.target_account.build(None);
-        let target_account = target_account_query.get_one(&mut connection, false);
+        let target_account = target_account_query.get_one(&mut connection, false)?;
         if target_account.is_none() {
             term.write_line(&format!(
                 "Unable to determine the target account for the move-split command:{:?}",
@@ -95,7 +108,7 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
     } else {
         None
     };
-    let q = if let Some(account) = account_query.get_one(&mut connection, false) {
+    let q = if let Some(account) = account_query.get_one(&mut connection, false)? {
         if let Some(target_account) = &move_target_account
             && target_account.commodity_guid != account.commodity_guid
         {
@@ -122,15 +135,14 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
     q.execute_and_process(&mut connection, move_target_account.as_ref(), &term)
 }
 
-fn handle_commodities(cmd: CommoditiesArgs) -> usize {
-    let mut connection = establish_connection();
+fn handle_commodities(cmd: CommoditiesArgs) -> Result<usize> {
+    let mut connection = establish_connection()?;
     let q = CommoditiesQuery::from(cmd);
-    q.execute_and_display(&mut connection);
-    0
+    q.execute_and_display(&mut connection)
 }
 
 fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
-    let mut connection = establish_connection();
+    let mut connection = establish_connection()?;
     let matching = if cmd.by_booking_date {
         Matching::ByBooking
     } else {

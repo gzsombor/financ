@@ -1,4 +1,4 @@
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::naive::NaiveDate;
 use console::{Term, style};
 use diesel::prelude::*;
@@ -30,7 +30,7 @@ impl TransactionQuery {
         }
     }
 
-    pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<(Split, Transaction)> {
+    pub fn execute(&self, connection: &mut SqliteConnection) -> Result<Vec<(Split, Transaction)>> {
         use crate::schema::splits::dsl::{account_guid, memo, splits, tx_guid};
         use crate::schema::transactions::dsl::{description, post_date, transactions};
 
@@ -51,19 +51,23 @@ impl TransactionQuery {
         }
         if let Some(after_date) = self.after_filter {
             let after_as_txt =
-                format_sqlite_date(&after_date.and_hms_opt(0, 0, 0).expect("Correct date"));
+                format_sqlite_date(&after_date.and_hms_opt(0, 0, 0).ok_or_else(|| {
+                    anyhow::anyhow!("Failed to construct time for after date {after_date}")
+                })?);
             query = query.filter(post_date.ge(after_as_txt));
         }
         if let Some(before_date) = self.before_filter {
             let before_as_txt =
-                format_sqlite_date(&before_date.and_hms_opt(23, 59, 59).expect("Correct date"));
+                format_sqlite_date(&before_date.and_hms_opt(23, 59, 59).ok_or_else(|| {
+                    anyhow::anyhow!("Failed to construct time for before date {before_date}")
+                })?);
             query = query.filter(post_date.le(before_as_txt));
         }
 
         query
             .limit(self.limit)
             .load::<(Split, Transaction)>(connection)
-            .expect("Error loading splits")
+            .context("Error loading splits")
     }
 
     pub fn execute_and_process(
@@ -72,7 +76,7 @@ impl TransactionQuery {
         target_account: Option<&Account>,
         term: &Term,
     ) -> Result<usize> {
-        let results = self.execute(connection);
+        let results = self.execute(connection)?;
         match target_account {
             None => Ok(Self::display(results)),
             Some(account) => Self::move_splits(connection, results, account, term),
@@ -109,10 +113,16 @@ impl TransactionQuery {
                 "[{}]<{}> - {} - {}",
                 split.account_guid, split.tx_guid, tx, split
             );
-            let res = diesel::update(splits.find(split.guid))
+            let affected = diesel::update(splits.find(&split.guid))
                 .set(account_guid.eq(&target_account.guid))
-                .execute(connection);
-            assert_eq!(1, res.unwrap());
+                .execute(connection)
+                .context("Error moving split")?;
+            if affected != 1 {
+                anyhow::bail!(
+                    "Moving split {} affected {affected} rows, expected 1",
+                    split.guid
+                );
+            }
         }
         Ok(len)
     }

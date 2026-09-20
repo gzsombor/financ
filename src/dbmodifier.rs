@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use chrono::NaiveDateTime;
 use diesel::prelude::*;
 use guid_create::GUID;
@@ -68,10 +69,19 @@ impl<'a> NewSplit<'a> {
         memo: &'a str,
         currency: &Commodities,
         amount: Decimal,
-    ) -> Self {
-        let value = DenominatedValue::denominate_decimal(amount, currency.fraction);
-        let qty = DenominatedValue::denominate_decimal(amount, account.commodity_scu);
-        NewSplit::new_with_defaults(split_guid, tx_guid, &account.guid, memo, &value, &qty)
+    ) -> Result<Self> {
+        let value = DenominatedValue::denominate_decimal(amount, currency.fraction)
+            .context("Failed to denominate value")?;
+        let qty = DenominatedValue::denominate_decimal(amount, account.commodity_scu)
+            .context("Failed to denominate quantity")?;
+        Ok(NewSplit::new_with_defaults(
+            split_guid,
+            tx_guid,
+            &account.guid,
+            memo,
+            &value,
+            &qty,
+        ))
     }
 
     pub fn insert(
@@ -81,19 +91,21 @@ impl<'a> NewSplit<'a> {
         memo: &'a str,
         currency: &Commodities,
         amount: Decimal,
-    ) -> String {
+    ) -> Result<String> {
         let split_guid = format_guid(&GUID::rand().to_string());
         {
             let split =
-                NewSplit::create_split(&split_guid, tx_guid, account, memo, currency, amount);
+                NewSplit::create_split(&split_guid, tx_guid, account, memo, currency, amount)?;
 
             let inserted_rows = diesel::insert_into(splits::table)
                 .values(&split)
                 .execute(connection)
-                .expect("Error saving new split");
-            assert_eq!(1, inserted_rows);
+                .context("Error saving new split")?;
+            if inserted_rows != 1 {
+                anyhow::bail!("Inserting split inserted {inserted_rows} rows, expected 1");
+            }
         }
-        split_guid
+        Ok(split_guid)
     }
 }
 
@@ -122,7 +134,7 @@ impl<'a> NewTransaction<'a> {
         post_date: Option<NaiveDateTime>,
         enter_date: NaiveDateTime,
         description: &'a str,
-    ) -> usize {
+    ) -> Result<usize> {
         let formatted_date = post_date
             .map(|x| format_sqlite_date(&x))
             .unwrap_or_default();
@@ -138,8 +150,10 @@ impl<'a> NewTransaction<'a> {
         let inserted_rows = diesel::insert_into(transactions::table)
             .values(transaction)
             .execute(connection)
-            .expect("Error saving transaction");
-        assert_eq!(1, inserted_rows);
-        inserted_rows
+            .context("Error saving transaction")?;
+        if inserted_rows != 1 {
+            anyhow::bail!("Inserting transaction inserted {inserted_rows} rows, expected 1");
+        }
+        Ok(inserted_rows)
     }
 }

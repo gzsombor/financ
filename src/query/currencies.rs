@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use diesel::prelude::*;
 
 use crate::{
@@ -12,7 +13,7 @@ pub struct CommoditiesQuery {
 }
 
 impl CommoditiesQuery {
-    pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<Commodities> {
+    pub fn execute(&self, connection: &mut SqliteConnection) -> Result<Vec<Commodities>> {
         use crate::schema::commodities::dsl::{commodities, mnemonic, namespace};
 
         let mut query = commodities.into_boxed();
@@ -26,45 +27,38 @@ impl CommoditiesQuery {
         query
             .limit(self.limit)
             .load::<Commodities>(connection)
-            .expect("Error loading commodities")
+            .context("Error loading commodities")
     }
-    /*
-        pub fn to_map(&self, connection: &SqliteConnection) -> BTreeMap<String, Commodities> {
-            let mut commodity_map = BTreeMap::new();
-            let results = self.execute(&connection);
-            for commodity in results {
-                commodity_map.insert(commodity.guid.clone(), commodity);
-            }
-            commodity_map
-        }
-    */
-    pub fn execute_and_display(&self, connection: &mut SqliteConnection) -> usize {
-        let results = self.execute(connection);
+    pub fn execute_and_display(&self, connection: &mut SqliteConnection) -> Result<usize> {
+        let results = self.execute(connection)?;
         println!("Displaying {} commodities", results.len());
         let len = results.len();
         for commodity in results {
             commodity.display();
         }
-        len
+        Ok(len)
     }
 
-    pub fn get_by_guid(connection: &mut SqliteConnection, id: &str) -> Option<Commodities> {
+    pub fn get_by_guid(connection: &mut SqliteConnection, id: &str) -> Result<Option<Commodities>> {
         use crate::schema::commodities::dsl::{commodities, guid};
 
-        commodities
+        Ok(commodities
             .filter(guid.eq(id))
             .limit(1)
             .load::<Commodities>(connection)
-            .expect("Error loading a commodity")
-            .pop()
+            .context("Error loading a commodity")?
+            .pop())
     }
 
-    pub fn get_info_by_guid(connection: &mut SqliteConnection, id: &str) -> Option<CommodityInfo> {
-        Self::get_by_guid(connection, id).map(|c| CommodityInfo {
+    pub fn get_info_by_guid(
+        connection: &mut SqliteConnection,
+        id: &str,
+    ) -> Result<Option<CommodityInfo>> {
+        Ok(Self::get_by_guid(connection, id)?.map(|c| CommodityInfo {
             guid: c.guid,
             mnemonic: c.mnemonic,
             fullname: c.fullname,
-        })
+        }))
     }
 }
 

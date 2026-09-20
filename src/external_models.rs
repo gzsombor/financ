@@ -219,7 +219,7 @@ pub trait SheetParser {
 
 impl SheetDefinition {
     pub fn new(input_file: &str) -> Result<Self> {
-        let workbook = open_workbook_auto(input_file)?; //.expect("Cannot open file");
+        let workbook = open_workbook_auto(input_file)?;
         Ok(SheetDefinition {
             // input_file,
             workbook,
@@ -237,7 +237,10 @@ impl SheetDefinition {
             name
         } else {
             let sheet_names = self.workbook.sheet_names();
-            sheet_names.first().unwrap().to_owned()
+            sheet_names
+                .first()
+                .ok_or_else(|| anyhow!("No sheets found in the workbook"))?
+                .to_owned()
         };
         if let Ok(sheet) = self.workbook.worksheet_range(&sheet_name) {
             term.write_line(&format!("found sheet '{}'", style(&sheet_name).blue()))?;
@@ -283,14 +286,14 @@ pub struct TransactionPairing {
 }
 
 impl TransactionPairing {
-    pub fn new(pair: (Split, Transaction)) -> Self {
-        let amount = pair.0.get_quantity_as_decimal();
-        TransactionPairing {
+    pub fn new(pair: (Split, Transaction)) -> Option<Self> {
+        let amount = pair.0.get_quantity_as_decimal()?;
+        Some(TransactionPairing {
             transaction: pair.1,
             split: pair.0,
             external: RefCell::new(None),
             amount,
-        }
+        })
     }
     pub fn is_equal_amount(&self, amount: Decimal) -> bool {
         amount.normalize() == self.amount

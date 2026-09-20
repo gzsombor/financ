@@ -1,7 +1,7 @@
 use std::collections::BTreeMap;
 use std::ops::Bound::Included;
 
-use anyhow::Result;
+use anyhow::{Context, Result};
 use chrono::{Duration, Local, NaiveDate};
 use console::{Key, Term, style};
 use diesel::prelude::*;
@@ -59,7 +59,10 @@ impl TransactionCorrelator {
         })
     }
 
-    fn load_from_database(&self, connection: &mut SqliteConnection) -> Vec<(Split, Transaction)> {
+    fn load_from_database(
+        &self,
+        connection: &mut SqliteConnection,
+    ) -> Result<Vec<(Split, Transaction)>> {
         let db_query = TransactionQuery {
             limit: 10000,
             txid_filter: None,
@@ -69,11 +72,11 @@ impl TransactionCorrelator {
             before_filter: None,
             after_filter: None,
         };
-        let db_rows = db_query.execute(connection);
+        let db_rows = db_query.execute(connection)?;
         if self.verbose {
             println!("Number of transactions in the database: {}", db_rows.len());
         }
-        db_rows
+        Ok(db_rows)
     }
 
     fn get_min_date(&self) -> Option<NaiveDate> {
@@ -84,18 +87,21 @@ impl TransactionCorrelator {
         self.external_transactions.2
     }
 
-    fn build_mapping(&mut self, connection: &mut SqliteConnection) {
-        let db_transactions = self.load_from_database(connection);
+    fn build_mapping(&mut self, connection: &mut SqliteConnection) -> Result<()> {
+        let db_transactions = self.load_from_database(connection)?;
 
         for row in db_transactions {
-            if let Some(posting_date) = row.1.posting().map(|date_time| date_time.date()) {
+            if let Some(posting_date) = row.1.posting().map(|date_time| date_time.date())
+                && let Some(pairing) = TransactionPairing::new(row)
+            {
                 let list = self.transaction_map.entry(posting_date).or_default();
-                list.push(TransactionPairing::new(row));
+                list.push(pairing);
             }
         }
         if self.verbose {
             println!("Found {} separate date", self.transaction_map.len());
         }
+        Ok(())
     }
 
     fn get_unmatched(&self) -> Vec<&TransactionPairing> {
@@ -170,11 +176,10 @@ impl TransactionCorrelator {
         external_transaction: &ExternalTransaction,
     ) -> Option<&TransactionPairing> {
         if let Some(ext_date) = external_transaction.get_matching_date(self.matching) {
-            let actual_date = match delta_day {
-                0 => ext_date,
-                _ => ext_date
-                    .checked_add_signed(Duration::days(delta_day))
-                    .unwrap(),
+            let actual_date = if delta_day == 0 {
+                ext_date
+            } else {
+                ext_date.checked_add_signed(Duration::days(delta_day))?
             };
             if let Some(ext_amount) = external_transaction.get_amount()
                 && let Some(list) = self.transaction_map.get(&actual_date)
@@ -221,7 +226,7 @@ impl CorrelationCommand {
         term: &Term,
         format: &dyn SheetParser,
     ) -> Result<usize> {
-        if let Some(only_account) = self.account_query.get_one(connection, true) {
+        if let Some(only_account) = self.account_query.get_one(connection, true)? {
             let mut correlator = TransactionCorrelator::new(
                 &self.input_file,
                 self.sheet_name.clone(),
@@ -231,7 +236,7 @@ impl CorrelationCommand {
                 format,
                 term,
             )?;
-            correlator.build_mapping(connection);
+            correlator.build_mapping(connection)?;
 
             term.write_line(&format!(
                 "Between {} and {}",
@@ -269,9 +274,9 @@ impl CorrelationCommand {
                     style("ok.").green()
                 ))?;
             } else {
-                let fee_account = self.fee_account_query.get_one(connection, false);
+                let fee_account = self.fee_account_query.get_one(connection, false)?;
                 if let Some(counter_account) =
-                    self.counterparty_account_query.get_one(connection, true)
+                    self.counterparty_account_query.get_one(connection, true)?
                 {
                     let mut add_transactions = AddTransactions {
                         connection,
@@ -362,22 +367,22 @@ impl AddTransactions<'_> {
     fn add_transaction(&mut self, transaction: &ExternalTransaction) -> Result<()> {
         self.term
             .write_line(&format!("adding {}", style(&transaction).red()))?;
-        let commodity_guid = &self
+        let commodity_guid = self
             .only_account
             .commodity_guid
             .clone()
-            .expect("Commodity guid is not null");
-        let commodity = CommoditiesQuery::get_by_guid(self.connection, commodity_guid)
-            .expect("Currency not found!");
+            .context("Commodity guid is not null")?;
+        let commodity = CommoditiesQuery::get_by_guid(self.connection, &commodity_guid)?
+            .context("Currency not found!")?;
         let tr_guid = format_guid(&GUID::rand().to_string());
         let spend_date = transaction
             .get_matching_date(Matching::BySpending)
-            .map(|d| d.and_hms_opt(12, 0, 0).expect("Correct date"));
+            .and_then(|d| d.and_hms_opt(12, 0, 0));
         let current_time = Local::now().naive_local();
         let description = transaction
             .get_description_or_category()
             .unwrap_or_default();
-        let amount = transaction.get_amount().expect("Amount is expected!");
+        let amount = transaction.get_amount().context("Amount is expected!")?;
 
         let fee_value = &transaction.transaction_fee.unwrap_or_default();
 
@@ -388,32 +393,36 @@ impl AddTransactions<'_> {
             spend_date,
             current_time,
             &description,
-        );
-        let _split_id_from = NewSplit::insert(
+        )?;
+        NewSplit::insert(
             self.connection,
             &tr_guid,
             self.only_account,
             &description,
             &commodity,
             amount,
-        );
-        let _split_id_counter = NewSplit::insert(
+        )?;
+        NewSplit::insert(
             self.connection,
             &tr_guid,
             self.counter_account,
             &transaction.get_other_account_desc(),
             &commodity,
             -amount - fee_value,
-        );
+        )?;
         if !(*fee_value).is_zero() {
-            let _fee_id_counter = NewSplit::insert(
+            let fee_account = self
+                .fee_account
+                .as_ref()
+                .context("Fee account is expected!")?;
+            NewSplit::insert(
                 self.connection,
                 &tr_guid,
-                self.fee_account.as_ref().expect("Fee account is expected!"),
+                fee_account,
                 &description,
                 &commodity,
                 *fee_value,
-            );
+            )?;
         }
         /*        self.term.write_line(&format!(
             "trans id:{} \n\t{} - {} \n\t{} - {}",

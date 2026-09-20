@@ -87,19 +87,24 @@ impl fmt::Display for CommodityInfo {
 }
 
 impl CommodityInfo {
+    /// Resolves the commodity info for the given accounts.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if a commodity lookup fails.
     pub fn resolve_for_accounts(
         connection: &mut SqliteConnection,
         accounts: &[Account],
-    ) -> HashMap<String, CommodityInfo> {
+    ) -> anyhow::Result<HashMap<String, CommodityInfo>> {
         let mut commodities: HashMap<String, CommodityInfo> = HashMap::new();
         for guid in accounts.iter().filter_map(|a| a.commodity_guid.as_deref()) {
             if !commodities.contains_key(guid)
-                && let Some(c) = CommoditiesQuery::get_info_by_guid(connection, guid)
+                && let Some(c) = CommoditiesQuery::get_info_by_guid(connection, guid)?
             {
                 commodities.insert(guid.to_string(), c);
             }
         }
-        commodities
+        Ok(commodities)
     }
 }
 
@@ -129,26 +134,27 @@ impl fmt::Display for Account {
 
 impl Split {
     #[must_use]
-    pub fn get_quantity_as_decimal(&self) -> Decimal {
+    pub fn get_quantity_as_decimal(&self) -> Option<Decimal> {
         Self::as_decimal(self.quantity_num, self.quantity_denom)
     }
 
     #[must_use]
-    pub fn get_value_as_decimal(&self) -> Decimal {
+    pub fn get_value_as_decimal(&self) -> Option<Decimal> {
         Self::as_decimal(self.value_num, self.value_denom)
     }
 
-    fn as_decimal(num: i64, denom: i64) -> Decimal {
-        let n = Decimal::from_i64(num).expect("An integer to decimal conversion should work");
-        n.checked_div(Decimal::from_i64(denom).expect("Denominator can be converted to decimal"))
-            .expect("dividing with denominator should work")
+    fn as_decimal(num: i64, denom: i64) -> Option<Decimal> {
+        let n = Decimal::from_i64(num)?;
+        n.checked_div(Decimal::from_i64(denom)?)
     }
 
+    #[allow(clippy::cast_precision_loss)]
     #[must_use]
     pub fn get_value(&self) -> f64 {
         (self.value_num as f64) / (self.value_denom as f64)
     }
 
+    #[allow(clippy::cast_precision_loss)]
     #[must_use]
     pub fn get_quantity(&self) -> f64 {
         (self.quantity_num as f64) / (self.quantity_denom as f64)

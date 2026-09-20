@@ -1,3 +1,4 @@
+use anyhow::{Context, Result};
 use chrono::{NaiveDate, NaiveDateTime};
 use diesel::prelude::*;
 use dotenv::dotenv;
@@ -7,19 +8,18 @@ use rust_decimal::prelude::ToPrimitive;
 use std::env;
 use std::sync::LazyLock;
 
-#[must_use]
 /// Establishes a connection to the `GnuCash` database.
 ///
-/// # Panics
+/// # Errors
 ///
-/// Panics if the `DATABASE_URL` environment variable is not set or if the
-/// connection cannot be established.
-pub fn establish_connection() -> SqliteConnection {
+/// Returns an error if the `DATABASE_URL` environment variable is not set or
+/// if the connection cannot be established.
+pub fn establish_connection() -> Result<SqliteConnection> {
     dotenv().ok();
 
-    let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
+    let database_url = env::var("DATABASE_URL").context("DATABASE_URL must be set")?;
     SqliteConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {database_url}"))
+        .with_context(|| format!("Error connecting to {database_url}"))
 }
 
 #[must_use]
@@ -34,24 +34,16 @@ pub fn to_string(date: Option<NaiveDate>) -> String {
 
 #[must_use]
 /// Extracts a date in `yyyy.mm.dd.` format from a string.
-///
-/// # Panics
-///
-/// Panics if a captured number cannot be parsed as an integer.
 pub fn extract_date(string: &Option<String>) -> Option<NaiveDate> {
     static RE: LazyLock<Regex> =
         LazyLock::new(|| Regex::new(r"(\d{4})\.(\d{2})\.(\d{2})").unwrap());
     string.as_ref().and_then(|str| {
         let caps = RE.captures(str)?;
-        let year = caps.get(1).unwrap().as_str();
-        let month = caps.get(2).unwrap().as_str();
-        let day = caps.get(3).unwrap().as_str();
+        let year = caps.get(1)?.as_str();
+        let month = caps.get(2)?.as_str();
+        let day = caps.get(3)?.as_str();
 
-        NaiveDate::from_ymd_opt(
-            year.parse().expect("Number as year"),
-            month.parse().expect("Number as month"),
-            day.parse().expect("Number as day"),
-        )
+        NaiveDate::from_ymd_opt(year.parse().ok()?, month.parse().ok()?, day.parse().ok()?)
     })
 }
 
@@ -105,18 +97,14 @@ impl DenominatedValue {
 
     /// Converts a decimal to a fixed-point value with the given denominator.
     ///
-    /// # Panics
-    ///
-    /// Panics if the rounded value does not fit into an `i64`.
+    /// Returns `None` if the rounded value does not fit into an `i64`.
     #[must_use]
-    pub fn denominate_decimal(value: Decimal, denom: i32) -> Self {
-        Self {
-            value: (value * Decimal::from(denom))
-                .round()
-                .to_i64()
-                .expect("conversion to i64 works after rounding"),
+    pub fn denominate_decimal(value: Decimal, denom: i32) -> Option<Self> {
+        let value = (value * Decimal::from(denom)).round();
+        Some(Self {
+            value: value.to_i64()?,
             denom: i64::from(denom),
-        }
+        })
     }
 }
 

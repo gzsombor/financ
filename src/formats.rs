@@ -41,6 +41,7 @@ impl SheetFormat {
         }
     }
 
+    #[allow(clippy::arc_with_non_send_sync)]
     pub fn new_rhai(ast: AST, parser_fn: String) -> SheetFormat {
         let mut executor = Executor::new();
         executor.ast = Some(ast);
@@ -52,6 +53,7 @@ impl SheetFormat {
 }
 
 impl SheetParser for SheetFormat {
+    #[allow(clippy::too_many_lines)]
     fn parse_sheet(&self, range: &Range<Data>) -> Result<Vec<ExternalTransaction>> {
         match self {
             SheetFormat::Otp => Ok(range
@@ -276,6 +278,7 @@ impl Executor {
     }
 }
 
+#[allow(clippy::cast_precision_loss)]
 fn convert_to_rhai_row(row: &[Data]) -> Vec<Dynamic> {
     // Convert each Calamine Data cell to a Rhai Dynamic type
     let rhai_row: Vec<Dynamic> = row
@@ -333,9 +336,9 @@ fn cleanup_string(input: String) -> String {
 }
 
 // Helper to convert Dynamic to calamine::Data
-fn dynamic_to_data(d: Dynamic) -> Data {
-    if d.is_string() {
-        Data::String(d.into_string().unwrap())
+fn dynamic_to_data(d: &Dynamic) -> Data {
+    if let Ok(s) = d.clone().into_string() {
+        Data::String(s)
     } else if let Ok(i) = d.as_int() {
         Data::Int(i)
     } else if let Ok(f) = d.as_float() {
@@ -402,26 +405,26 @@ fn has_value(d: Dynamic) -> bool {
     if d.is_unit() {
         return false;
     }
-    if d.clone().try_cast::<Option<NaiveDate>>().is_some() {
-        return d.try_cast::<Option<NaiveDate>>().unwrap().is_some();
+    if let Some(opt) = d.clone().try_cast::<Option<NaiveDate>>() {
+        return opt.is_some();
     }
-    if d.clone().try_cast::<Option<NaiveDateTime>>().is_some() {
-        return d.try_cast::<Option<NaiveDateTime>>().unwrap().is_some();
+    if let Some(opt) = d.clone().try_cast::<Option<NaiveDateTime>>() {
+        return opt.is_some();
     }
-    if d.clone().try_cast::<Option<String>>().is_some() {
-        return d.try_cast::<Option<String>>().unwrap().is_some();
+    if let Some(opt) = d.clone().try_cast::<Option<String>>() {
+        return opt.is_some();
     }
-    if d.clone().try_cast::<Option<Decimal>>().is_some() {
-        return d.try_cast::<Option<Decimal>>().unwrap().is_some();
+    if let Some(opt) = d.clone().try_cast::<Option<Decimal>>() {
+        return opt.is_some();
     }
-    if d.clone().try_cast::<Option<f64>>().is_some() {
-        return d.try_cast::<Option<f64>>().unwrap().is_some();
+    if let Some(opt) = d.clone().try_cast::<Option<f64>>() {
+        return opt.is_some();
     }
-    if d.clone().try_cast::<Option<i64>>().is_some() {
-        return d.try_cast::<Option<i64>>().unwrap().is_some();
+    if let Some(opt) = d.clone().try_cast::<Option<i64>>() {
+        return opt.is_some();
     }
-    if d.clone().try_cast::<Option<bool>>().is_some() {
-        return d.try_cast::<Option<bool>>().unwrap().is_some();
+    if let Some(opt) = d.try_cast::<Option<bool>>() {
+        return opt.is_some();
     }
     true
 }
@@ -433,25 +436,25 @@ pub fn build_rhai_engine() -> Engine {
     // Register Rust functions with Rhai-compatible wrappers
     engine.register_fn("get_float", get_float);
     engine.register_fn("cell_to_date", |d: Dynamic| {
-        cell_to_date(&dynamic_to_data(d))
+        cell_to_date(&dynamic_to_data(&d))
     });
     engine.register_fn("cell_to_datetime", |d: Dynamic| {
-        cell_to_datetime(&dynamic_to_data(d))
+        cell_to_datetime(&dynamic_to_data(&d))
     });
     engine.register_fn("cell_to_decimal", |d: Dynamic| {
-        cell_to_decimal(&dynamic_to_data(d))
+        cell_to_decimal(&dynamic_to_data(&d))
     });
     engine.register_fn("cell_to_english_date", |d: Dynamic| {
-        cell_to_english_date(&dynamic_to_data(d))
+        cell_to_english_date(&dynamic_to_data(&d))
     });
     engine.register_fn("cell_to_german_date", |d: Dynamic| {
-        cell_to_german_date(&dynamic_to_data(d))
+        cell_to_german_date(&dynamic_to_data(&d))
     });
     engine.register_fn("cell_to_iso_date", |d: Dynamic| {
-        cell_to_iso_date(&dynamic_to_data(d))
+        cell_to_iso_date(&dynamic_to_data(&d))
     });
     engine.register_fn("cell_to_string", |d: Dynamic| {
-        cell_to_string(&dynamic_to_data(d))
+        cell_to_string(&dynamic_to_data(&d))
     });
     engine.register_fn("debug", |d: Dynamic| {
         println!("debug: {d:?}");
@@ -683,25 +686,25 @@ mod tests {
         // Test string conversion
         let string_dyn: Dynamic = "test".into();
         assert_eq!(
-            dynamic_to_data(string_dyn),
+            dynamic_to_data(&string_dyn),
             Data::String("test".to_string())
         );
 
         // Test float conversion
         let float_dyn: Dynamic = 3.15.into();
-        assert_eq!(dynamic_to_data(float_dyn), Data::Float(3.15));
+        assert_eq!(dynamic_to_data(&float_dyn), Data::Float(3.15));
 
         // Test int conversion
         let int_dyn: Dynamic = 42.into();
-        assert_eq!(dynamic_to_data(int_dyn), Data::Int(42));
+        assert_eq!(dynamic_to_data(&int_dyn), Data::Int(42));
 
         // Test bool conversion
         let bool_dyn: Dynamic = true.into();
-        assert_eq!(dynamic_to_data(bool_dyn), Data::Bool(true));
+        assert_eq!(dynamic_to_data(&bool_dyn), Data::Bool(true));
 
         // Test unit conversion
         let unit_dyn = Dynamic::UNIT;
-        assert_eq!(dynamic_to_data(unit_dyn), Data::Empty);
+        assert_eq!(dynamic_to_data(&unit_dyn), Data::Empty);
     }
 
     #[test]
