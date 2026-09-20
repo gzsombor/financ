@@ -5,27 +5,42 @@ use regex::Regex;
 use rust_decimal::Decimal;
 use rust_decimal::prelude::ToPrimitive;
 use std::env;
+use std::sync::LazyLock;
 
+#[must_use]
+/// Establishes a connection to the `GnuCash` database.
+///
+/// # Panics
+///
+/// Panics if the `DATABASE_URL` environment variable is not set or if the
+/// connection cannot be established.
 pub fn establish_connection() -> SqliteConnection {
     dotenv().ok();
 
     let database_url = env::var("DATABASE_URL").expect("DATABASE_URL must be set");
     SqliteConnection::establish(&database_url)
-        .unwrap_or_else(|_| panic!("Error connecting to {}", database_url))
+        .unwrap_or_else(|_| panic!("Error connecting to {database_url}"))
 }
 
+#[must_use]
 pub fn to_date(date_string: Option<String>) -> Option<NaiveDate> {
     date_string.and_then(|x| NaiveDate::parse_from_str(x.as_ref(), "%Y-%m-%d").ok())
 }
 
+#[must_use]
 pub fn to_string(date: Option<NaiveDate>) -> String {
-    date.map_or_else(|| "".to_string(), |dt| dt.format("%Y-%m-%d").to_string())
+    date.map_or_else(String::new, |dt| dt.format("%Y-%m-%d").to_string())
 }
 
+#[must_use]
+/// Extracts a date in `yyyy.mm.dd.` format from a string.
+///
+/// # Panics
+///
+/// Panics if a captured number cannot be parsed as an integer.
 pub fn extract_date(string: &Option<String>) -> Option<NaiveDate> {
-    lazy_static! {
-        static ref RE: Regex = Regex::new(r"(\d{4})\.(\d{2})\.(\d{2})").unwrap();
-    }
+    static RE: LazyLock<Regex> =
+        LazyLock::new(|| Regex::new(r"(\d{4})\.(\d{2})\.(\d{2})").unwrap());
     string.as_ref().and_then(|str| {
         let caps = RE.captures(str)?;
         let year = caps.get(1).unwrap().as_str();
@@ -40,6 +55,7 @@ pub fn extract_date(string: &Option<String>) -> Option<NaiveDate> {
     })
 }
 
+#[must_use]
 pub fn parse_sqlite_date(value: &Option<String>) -> Option<NaiveDateTime> {
     value
         .as_ref()
@@ -54,17 +70,20 @@ fn parse_date_2_format(value: &str) -> Option<NaiveDateTime> {
     }
 }
 
+#[must_use]
 pub fn format_sqlite_date(ndt: &NaiveDateTime) -> String {
     //    ndt.format("%Y%m%d%H%M%S").to_string()
     ndt.format("%Y-%m-%d %H:%M:%S").to_string()
 }
 
+#[must_use]
 pub fn format_guid(guid: &str) -> String {
     let mut lower = guid.to_lowercase();
     lower.retain(|c| c != '-');
     lower
 }
 
+#[must_use]
 pub fn get_value_or_empty(opt: &Option<String>) -> &str {
     match opt {
         Some(x) => x,
@@ -79,10 +98,17 @@ pub struct DenominatedValue {
 }
 
 impl DenominatedValue {
+    #[must_use]
     pub fn new(value: i64, denom: i64) -> Self {
         Self { value, denom }
     }
 
+    /// Converts a decimal to a fixed-point value with the given denominator.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the rounded value does not fit into an `i64`.
+    #[must_use]
     pub fn denominate_decimal(value: Decimal, denom: i32) -> Self {
         Self {
             value: (value * Decimal::from(denom))

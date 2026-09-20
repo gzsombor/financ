@@ -180,7 +180,7 @@ mod tests {
     #[test]
     fn test_cell_to_date_raw_edge_cases() {
         // Test with empty string
-        let empty_cell = Data::String("".to_string());
+        let empty_cell = Data::String(String::new());
         let empty_date = cell_to_date_raw(&empty_cell, "%Y-%m-%d");
         assert_eq!(empty_date, None);
 
@@ -198,7 +198,7 @@ mod tests {
     #[test]
     fn test_cell_to_datetime_edge_cases() {
         // Test with empty string
-        let empty_cell = Data::String("".to_string());
+        let empty_cell = Data::String(String::new());
         let empty_datetime = cell_to_datetime(&empty_cell);
         assert_eq!(empty_datetime, None);
 

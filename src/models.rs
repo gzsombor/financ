@@ -93,10 +93,10 @@ impl CommodityInfo {
     ) -> HashMap<String, CommodityInfo> {
         let mut commodities: HashMap<String, CommodityInfo> = HashMap::new();
         for guid in accounts.iter().filter_map(|a| a.commodity_guid.as_deref()) {
-            if !commodities.contains_key(guid) {
-                if let Some(c) = CommoditiesQuery::get_info_by_guid(connection, guid) {
-                    commodities.insert(guid.to_string(), c);
-                }
+            if !commodities.contains_key(guid)
+                && let Some(c) = CommoditiesQuery::get_info_by_guid(connection, guid)
+            {
+                commodities.insert(guid.to_string(), c);
             }
         }
         commodities
@@ -128,10 +128,12 @@ impl fmt::Display for Account {
 }
 
 impl Split {
+    #[must_use]
     pub fn get_quantity_as_decimal(&self) -> Decimal {
         Self::as_decimal(self.quantity_num, self.quantity_denom)
     }
 
+    #[must_use]
     pub fn get_value_as_decimal(&self) -> Decimal {
         Self::as_decimal(self.value_num, self.value_denom)
     }
@@ -142,10 +144,12 @@ impl Split {
             .expect("dividing with denominator should work")
     }
 
+    #[must_use]
     pub fn get_value(&self) -> f64 {
         (self.value_num as f64) / (self.value_denom as f64)
     }
 
+    #[must_use]
     pub fn get_quantity(&self) -> f64 {
         (self.quantity_num as f64) / (self.quantity_denom as f64)
     }
@@ -165,9 +169,11 @@ impl fmt::Display for Split {
 }
 
 impl Transaction {
+    #[must_use]
     pub fn posting(&self) -> Option<NaiveDateTime> {
         parse_sqlite_date(&self.post_date)
     }
+    #[must_use]
     pub fn entering(&self) -> Option<NaiveDateTime> {
         parse_sqlite_date(&self.enter_date)
     }
@@ -181,7 +187,7 @@ impl fmt::Display for Transaction {
             f.write_str("--------")?;
         }
         if let Some(ref desc) = self.description {
-            write!(f, " - {}", desc)?;
+            write!(f, " - {desc}")?;
         }
         Ok(())
     }

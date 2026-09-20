@@ -13,8 +13,6 @@ extern crate guid_create;
 extern crate regex;
 #[macro_use]
 extern crate anyhow;
-#[macro_use]
-extern crate lazy_static;
 
 mod cli;
 pub mod correlator;
@@ -29,11 +27,14 @@ pub mod utils;
 
 use std::fs;
 use std::io;
+use std::path::PathBuf;
 
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser};
 use clap_complete::{Shell, generate};
-use cli::{Commands, CommoditiesArgs, CorrelateArgs, EvalScriptArgs, ListAccountsArgs, TransactionsArgs};
+use cli::{
+    Commands, CommoditiesArgs, CorrelateArgs, EvalScriptArgs, ListAccountsArgs, TransactionsArgs,
+};
 use console::{Term, style};
 
 use crate::cli::Cli;
@@ -49,24 +50,24 @@ fn main() {
     let cli = Cli::parse();
 
     match cli.command {
-        Commands::ListAccounts(args) => handle_list_accounts(args),
+        Commands::ListAccounts(args) => handle_list_accounts(&args),
         Commands::Transactions(args) => handle_list_entries(args),
-        Commands::Commodities(args) => handle_commodities(args),
+        Commands::Commodities(args) => Ok(handle_commodities(args)),
         Commands::Correlate(args) => handle_correlate(args),
         Commands::EvalScript(args) => handle_eval_script(args),
-        Commands::Completions { shell } => handle_shell_completions(shell),
+        Commands::Completions { shell } => Ok(handle_shell_completions(shell)),
     }
     .unwrap();
 }
 
-fn handle_shell_completions(shell: Shell) -> Result<usize> {
+fn handle_shell_completions(shell: Shell) -> usize {
     let mut cmd = Cli::command();
     eprintln!("Generating completion file for {shell:?}...");
     generate(shell, &mut cmd, "financ", &mut io::stdout());
-    Ok(0)
+    0
 }
 
-fn handle_list_accounts(args: ListAccountsArgs) -> Result<usize> {
+fn handle_list_accounts(args: &ListAccountsArgs) -> Result<usize> {
     let mut connection = establish_connection();
     let q = args.account.build(args.limit);
     q.execute_and_display(&mut connection);
@@ -87,8 +88,7 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
                 style(&target_account_query).red()
             ))?;
             return Err(anyhow!(
-                "Target account missing, command: {}!",
-                &target_account_query
+                "Target account missing, command: {target_account_query}!"
             ));
         }
         target_account
@@ -105,9 +105,7 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
                 style(target_account).red()
             ))?;
             return Err(anyhow!(
-                "Different commodities: from account={} target account={}!",
-                &account,
-                target_account
+                "Different commodities: from account={account} target account={target_account}!"
             ));
         }
 
@@ -121,13 +119,14 @@ fn handle_list_entries(args: TransactionsArgs) -> Result<usize> {
         TransactionQuery::from(args)
     };
     // term.write_line(&format!("Limit is {}", style(q.limit).red()))?;
-    q.execute_and_process(&mut connection, &move_target_account, &term)
+    q.execute_and_process(&mut connection, move_target_account.as_ref(), &term)
 }
 
-fn handle_commodities(cmd: CommoditiesArgs) -> Result<usize> {
+fn handle_commodities(cmd: CommoditiesArgs) -> usize {
     let mut connection = establish_connection();
     let q = CommoditiesQuery::from(cmd);
-    q.execute_and_display(&mut connection)
+    q.execute_and_display(&mut connection);
+    0
 }
 
 fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
@@ -150,13 +149,13 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
         fee_account_query: cmd.fee_account.build(None),
     };
 
-    let format = if !cmd.rhai_scripts.is_empty() {
-        load_rhai_format(&cmd.rhai_scripts)?
-    } else {
+    let format = if cmd.rhai_scripts.is_empty() {
         cmd.format
             .clone()
             .and_then(|x| SheetFormat::new(&x))
             .with_context(|| format!("Unknown format:'{}'!", cmd.format.unwrap_or_default()))?
+    } else {
+        load_rhai_format(&cmd.rhai_scripts)?
     };
     correlation_command.execute(&mut connection, &term, &format)
 }
@@ -187,17 +186,21 @@ fn handle_eval_script(args: EvalScriptArgs) -> Result<usize> {
     Ok(0)
 }
 
-fn load_rhai_format(rhai_scripts: &[std::path::PathBuf]) -> Result<SheetFormat> {
+fn load_rhai_format(rhai_scripts: &[PathBuf]) -> Result<SheetFormat> {
     let engine = build_rhai_engine();
     let mut ast = engine.compile(
         "fn parse_sheet_row(row) { new_external_transaction(None, None, None, None, None, None, None, None, None) }",
     )?;
     for script_path in rhai_scripts {
-        let script_content = fs::read_to_string(script_path)
-            .with_context(|| format!("Failed to read Rhai script from {:?}", script_path))?;
-        let compiled_script = engine
-            .compile(script_content)
-            .with_context(|| format!("Failed to compile Rhai script from {:?}", script_path))?;
+        let script_content = fs::read_to_string(script_path).with_context(|| {
+            format!("Failed to read Rhai script from {}", script_path.display())
+        })?;
+        let compiled_script = engine.compile(script_content).with_context(|| {
+            format!(
+                "Failed to compile Rhai script from {}",
+                script_path.display()
+            )
+        })?;
         ast = ast.merge(&compiled_script);
     }
     Ok(SheetFormat::new_rhai(ast, "parse_sheet_row".to_string()))

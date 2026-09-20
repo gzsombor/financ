@@ -1,5 +1,7 @@
-use std::path::PathBuf;
 use std::sync::Arc;
+
+#[cfg(test)]
+use std::path::Path;
 
 use crate::external_models::{ExternalTransaction, ExternalTransactionBuilder, SheetParser};
 use crate::sheets::{
@@ -9,6 +11,7 @@ use crate::sheets::{
 use crate::utils::extract_date;
 use anyhow::Result;
 use calamine::{Data, DataType, Range};
+use chrono::{NaiveDate, NaiveDateTime};
 use rhai::{AST, Dynamic, Engine, Scope};
 
 use rust_decimal::Decimal;
@@ -104,7 +107,7 @@ impl SheetParser for SheetFormat {
                         booking_date: None,
                         amount: cell_to_decimal(&row[1]),
                         category: cell_to_string(&row[6]),
-                        description: concat(&other_account_name, &comment),
+                        description: concat(other_account_name.as_ref(), comment.as_ref()),
                         other_account: cell_to_string(&row[8]),
                         other_account_name,
                         textual_date: None,
@@ -161,7 +164,7 @@ impl SheetParser for SheetFormat {
                         other_account_name,
                         textual_date: None,
                         transaction_fee: cell_to_decimal(&row[14])
-                            .filter(|value| value.is_sign_positive()),
+                            .filter(Decimal::is_sign_positive),
                     }
                 })
                 .collect()),
@@ -182,7 +185,7 @@ impl SheetParser for SheetFormat {
                         booking_date,
                         amount,
                         category: None,
-                        description: concat(&other_account_name, &description),
+                        description: concat(other_account_name.as_ref(), description.as_ref()),
                         other_account,
                         other_account_name,
                         textual_date: None,
@@ -212,24 +215,17 @@ impl Executor {
         }
     }
 
-    fn add_script(&mut self, path: &PathBuf) -> Result<()> {
+    #[cfg(test)]
+    fn add_script(&mut self, path: &Path) -> Result<()> {
         let ast = self
             .engine
             .compile_file(path.to_path_buf())
-            .map_err(|e| anyhow::anyhow!("Rhai script compilation error: {}", e))?;
+            .map_err(|e| anyhow::anyhow!("Rhai script compilation error: {e}"))?;
         self.add_ast(ast);
         Ok(())
     }
 
-    fn add_source(&mut self, script: &str) -> Result<()> {
-        let ast = self
-            .engine
-            .compile(script)
-            .map_err(|e| anyhow::anyhow!("Rhai script compilation error: {}", e))?;
-        self.add_ast(ast);
-        Ok(())
-    }
-
+    #[cfg(test)]
     fn add_ast(&mut self, ast: AST) {
         match &self.ast {
             None => {
@@ -266,11 +262,11 @@ impl Executor {
                         // Get the specific line for better error reporting
                         let error_line = source_str.lines().nth(line.saturating_sub(1));
                         if let Some(line_content) = error_line {
-                            println!("Error on line {}: {}", line, line_content);
+                            println!("Error on line {line}: {line_content}");
                         }
                     }
 
-                    anyhow::anyhow!("Rhai script execution error: {}", e)
+                    anyhow::anyhow!("Rhai script execution error: {e}")
                 })?;
             if !transaction.is_empty() {
                 transactions.push(transaction);
@@ -280,12 +276,12 @@ impl Executor {
     }
 }
 
-fn convert_to_rhai_row(row: &[Data]) -> Vec<rhai::Dynamic> {
+fn convert_to_rhai_row(row: &[Data]) -> Vec<Dynamic> {
     // Convert each Calamine Data cell to a Rhai Dynamic type
-    let rhai_row: Vec<rhai::Dynamic> = row
+    let rhai_row: Vec<Dynamic> = row
         .iter()
         .map(|cell| match cell {
-            Data::Empty => rhai::Dynamic::UNIT,
+            Data::Empty | Data::Error(_) => Dynamic::UNIT,
             Data::String(s) => s.clone().into(),
             Data::Float(f) => (*f).into(),
             Data::Int(i) => (*i as f64).into(), // Rhai numbers are f64 by default
@@ -294,15 +290,13 @@ fn convert_to_rhai_row(row: &[Data]) -> Vec<rhai::Dynamic> {
                 .as_datetime()
                 .map(|date_time| Dynamic::from(date_time.format("%Y.%m.%d.").to_string()))
                 .unwrap_or_default(),
-            Data::DateTimeIso(date_time) => date_time.clone().into(),
-            Data::Error(_) => rhai::Dynamic::UNIT,
-            _ => Dynamic::from(cell.clone()),
+            Data::DateTimeIso(date_time) | Data::DurationIso(date_time) => date_time.clone().into(),
         })
         .collect();
     rhai_row
 }
 
-fn concat(first: &Option<String>, second: &Option<String>) -> Option<String> {
+fn concat(first: Option<&String>, second: Option<&String>) -> Option<String> {
     match (first, second) {
         (Some(f), Some(snd)) => {
             let mut x = f.clone();
@@ -310,8 +304,7 @@ fn concat(first: &Option<String>, second: &Option<String>) -> Option<String> {
             x.push_str(snd);
             Some(x)
         }
-        (Some(f), None) => Some(f.clone()),
-        (None, Some(f)) => Some(f.clone()),
+        (Some(f), None) | (None, Some(f)) => Some(f.clone()),
         (_, _) => None,
     }
 }
@@ -339,8 +332,8 @@ fn cleanup_string(input: String) -> String {
         .replace("o:", "ö")
 }
 
-// Helper to convert rhai::Dynamic to calamine::Data
-fn dynamic_to_data(d: rhai::Dynamic) -> Data {
+// Helper to convert Dynamic to calamine::Data
+fn dynamic_to_data(d: Dynamic) -> Data {
     if d.is_string() {
         Data::String(d.into_string().unwrap())
     } else if let Ok(i) = d.as_int() {
@@ -354,8 +347,9 @@ fn dynamic_to_data(d: rhai::Dynamic) -> Data {
     }
 }
 
-// Helper to get float from rhai::Dynamic
-fn get_float(d: rhai::Dynamic) -> f64 {
+// Helper to get float from Dynamic
+#[allow(clippy::cast_precision_loss, clippy::needless_pass_by_value)]
+fn get_float(d: Dynamic) -> f64 {
     if let Ok(f) = d.as_float() {
         f
     } else if let Ok(i) = d.as_int() {
@@ -365,34 +359,33 @@ fn get_float(d: rhai::Dynamic) -> f64 {
     }
 }
 
-// Helper to convert rhai::Dynamic to Option<chrono::NaiveDate>
-fn dynamic_to_option_naive_date(d: rhai::Dynamic) -> Option<chrono::NaiveDate> {
+// Helper to convert Dynamic to Option<NaiveDate>
+fn dynamic_to_option_naive_date(d: Dynamic) -> Option<NaiveDate> {
     if d.is_unit() {
         None
     } else {
-        match d.try_cast_result::<chrono::NaiveDate>() {
+        match d.try_cast_result::<NaiveDate>() {
             Ok(naive_date) => Some(naive_date),
-            Err(dynamic) => match dynamic.try_cast_result::<Option<chrono::NaiveDate>>() {
-                Ok(optional_date) => optional_date,
-                Err(_) => None,
-            },
+            Err(dynamic) => dynamic
+                .try_cast_result::<Option<NaiveDate>>()
+                .unwrap_or_default(),
         }
     }
 }
 
-// Helper to convert rhai::Dynamic to Option<rust_decimal::Decimal>
-fn dynamic_to_option_decimal(d: rhai::Dynamic) -> Option<rust_decimal::Decimal> {
+// Helper to convert Dynamic to Option<Decimal>
+fn dynamic_to_option_decimal(d: Dynamic) -> Option<Decimal> {
     if d.is_unit() {
         None
     } else {
         d.clone()
-            .try_cast::<rust_decimal::Decimal>()
-            .or_else(|| d.try_cast::<Option<rust_decimal::Decimal>>().flatten())
+            .try_cast::<Decimal>()
+            .or_else(|| d.try_cast::<Option<Decimal>>().flatten())
     }
 }
 
-// Helper to convert rhai::Dynamic to Option<String>
-fn dynamic_to_option_string(d: rhai::Dynamic) -> Option<String> {
+// Helper to convert Dynamic to Option<String>
+fn dynamic_to_option_string(d: Dynamic) -> Option<String> {
     if d.is_unit() {
         None
     } else {
@@ -405,21 +398,21 @@ fn dynamic_to_option_string(d: rhai::Dynamic) -> Option<String> {
 // Check whether a rhai value represents a present value: a non-unit value
 // that is not an empty (None) Option. Rhai keeps Option<T> return values of
 // registered functions as actual Option<T> values, unrelated to the unit.
-fn has_value(d: rhai::Dynamic) -> bool {
+fn has_value(d: Dynamic) -> bool {
     if d.is_unit() {
         return false;
     }
-    if d.clone().try_cast::<Option<chrono::NaiveDate>>().is_some() {
-        return d.try_cast::<Option<chrono::NaiveDate>>().unwrap().is_some();
+    if d.clone().try_cast::<Option<NaiveDate>>().is_some() {
+        return d.try_cast::<Option<NaiveDate>>().unwrap().is_some();
     }
-    if d.clone().try_cast::<Option<chrono::NaiveDateTime>>().is_some() {
-        return d.try_cast::<Option<chrono::NaiveDateTime>>().unwrap().is_some();
+    if d.clone().try_cast::<Option<NaiveDateTime>>().is_some() {
+        return d.try_cast::<Option<NaiveDateTime>>().unwrap().is_some();
     }
     if d.clone().try_cast::<Option<String>>().is_some() {
         return d.try_cast::<Option<String>>().unwrap().is_some();
     }
-    if d.clone().try_cast::<Option<rust_decimal::Decimal>>().is_some() {
-        return d.try_cast::<Option<rust_decimal::Decimal>>().unwrap().is_some();
+    if d.clone().try_cast::<Option<Decimal>>().is_some() {
+        return d.try_cast::<Option<Decimal>>().unwrap().is_some();
     }
     if d.clone().try_cast::<Option<f64>>().is_some() {
         return d.try_cast::<Option<f64>>().unwrap().is_some();
@@ -433,45 +426,43 @@ fn has_value(d: rhai::Dynamic) -> bool {
     true
 }
 
+#[allow(clippy::too_many_lines)]
 pub fn build_rhai_engine() -> Engine {
     let mut engine = Engine::new();
 
     // Register Rust functions with Rhai-compatible wrappers
     engine.register_fn("get_float", get_float);
-    engine.register_fn("cell_to_date", |d: rhai::Dynamic| {
+    engine.register_fn("cell_to_date", |d: Dynamic| {
         cell_to_date(&dynamic_to_data(d))
     });
-    engine.register_fn("cell_to_datetime", |d: rhai::Dynamic| {
+    engine.register_fn("cell_to_datetime", |d: Dynamic| {
         cell_to_datetime(&dynamic_to_data(d))
     });
-    engine.register_fn("cell_to_decimal", |d: rhai::Dynamic| {
+    engine.register_fn("cell_to_decimal", |d: Dynamic| {
         cell_to_decimal(&dynamic_to_data(d))
     });
-    engine.register_fn("cell_to_english_date", |d: rhai::Dynamic| {
+    engine.register_fn("cell_to_english_date", |d: Dynamic| {
         cell_to_english_date(&dynamic_to_data(d))
     });
-    engine.register_fn("cell_to_german_date", |d: rhai::Dynamic| {
+    engine.register_fn("cell_to_german_date", |d: Dynamic| {
         cell_to_german_date(&dynamic_to_data(d))
     });
-    engine.register_fn("cell_to_iso_date", |d: rhai::Dynamic| {
+    engine.register_fn("cell_to_iso_date", |d: Dynamic| {
         cell_to_iso_date(&dynamic_to_data(d))
     });
-    engine.register_fn("cell_to_string", |d: rhai::Dynamic| {
+    engine.register_fn("cell_to_string", |d: Dynamic| {
         cell_to_string(&dynamic_to_data(d))
     });
-    engine.register_fn("debug", |d: rhai::Dynamic| {
-        println!("debug: {:?}", d);
-        format!("DEBUG: {:?}", d)
+    engine.register_fn("debug", |d: Dynamic| {
+        println!("debug: {d:?}");
+        format!("DEBUG: {d:?}")
     });
-    engine.register_fn("is_unit", |value: rhai::Dynamic| value.is_unit());
-    engine.register_fn("has_value", |d: rhai::Dynamic| has_value(d));
+    engine.register_fn("is_unit", |value: Dynamic| value.is_unit());
+    engine.register_fn("has_value", |d: Dynamic| has_value(d));
     engine.register_fn("extract_date", extract_date);
-    engine.register_fn(
-        "concat",
-        |first: Option<String>, second: Option<String>| {
-            concat(&first, &second)
-        },
-    );
+    engine.register_fn("concat", |first: Option<String>, second: Option<String>| {
+        concat(first.as_ref(), second.as_ref())
+    });
     engine.register_fn("cleanup_string", cleanup_string);
     engine.register_fn(
         "create_naive_date_ymd",
@@ -479,7 +470,7 @@ pub fn build_rhai_engine() -> Engine {
             if let (Ok(year), Ok(month), Ok(day)) =
                 (year.try_into(), month.try_into(), day.try_into())
             {
-                chrono::NaiveDate::from_ymd_opt(year, month, day)
+                NaiveDate::from_ymd_opt(year, month, day)
             } else {
                 None
             }
@@ -497,18 +488,17 @@ pub fn build_rhai_engine() -> Engine {
     engine.register_type::<ExternalTransaction>();
     engine.register_fn(
         "new_external_transaction",
-        |date_dyn: rhai::Dynamic,
-         booking_date_dyn: rhai::Dynamic,
-         amount_dyn: rhai::Dynamic,
-         category_dyn: rhai::Dynamic,
-         description_dyn: rhai::Dynamic,
-         other_account_dyn: rhai::Dynamic,
-         other_account_name_dyn: rhai::Dynamic,
-         textual_date_dyn: rhai::Dynamic,
-         transaction_fee_dyn: rhai::Dynamic| {
+        |date_dyn: Dynamic,
+         booking_date_dyn: Dynamic,
+         amount_dyn: Dynamic,
+         category_dyn: Dynamic,
+         description_dyn: Dynamic,
+         other_account_dyn: Dynamic,
+         other_account_name_dyn: Dynamic,
+         textual_date_dyn: Dynamic,
+         transaction_fee_dyn: Dynamic| {
             println!(
-                "new_external_transaction: date: {:?} amount: {:?}, description: {:?}",
-                date_dyn, amount_dyn, description_dyn
+                "new_external_transaction: date: {date_dyn:?} amount: {amount_dyn:?}, description: {description_dyn:?}"
             );
             ExternalTransaction {
                 date: dynamic_to_option_naive_date(date_dyn),
@@ -526,24 +516,20 @@ pub fn build_rhai_engine() -> Engine {
 
     // Register ExternalTransactionBuilder type and methods for cleaner API
     engine.register_type::<ExternalTransactionBuilder>();
-    engine.register_fn("new_transaction", || ExternalTransactionBuilder::new());
+    engine.register_fn("new_transaction", ExternalTransactionBuilder::new);
     engine.register_fn(
         "with_date",
-        |builder: ExternalTransactionBuilder, date: Option<chrono::NaiveDate>| {
-            builder.with_date(date)
-        },
+        |builder: ExternalTransactionBuilder, date: Option<NaiveDate>| builder.with_date(date),
     );
     engine.register_fn(
         "with_booking_date",
-        |builder: ExternalTransactionBuilder, booking_date: Option<chrono::NaiveDate>| {
+        |builder: ExternalTransactionBuilder, booking_date: Option<NaiveDate>| {
             builder.with_booking_date(booking_date)
         },
     );
     engine.register_fn(
         "with_amount",
-        |builder: ExternalTransactionBuilder, amount: Option<rust_decimal::Decimal>| {
-            builder.with_amount(amount)
-        },
+        |builder: ExternalTransactionBuilder, amount: Option<Decimal>| builder.with_amount(amount),
     );
     engine.register_fn(
         "with_category",
@@ -595,13 +581,13 @@ pub fn build_rhai_engine() -> Engine {
     );
     engine.register_fn(
         "with_textual_date",
-        |builder: ExternalTransactionBuilder, textual_date: Option<chrono::NaiveDate>| {
+        |builder: ExternalTransactionBuilder, textual_date: Option<NaiveDate>| {
             builder.with_textual_date(textual_date)
         },
     );
     engine.register_fn(
         "with_transaction_fee",
-        |builder: ExternalTransactionBuilder, transaction_fee: Option<rust_decimal::Decimal>| {
+        |builder: ExternalTransactionBuilder, transaction_fee: Option<Decimal>| {
             builder.with_transaction_fee(transaction_fee)
         },
     );
@@ -614,13 +600,11 @@ pub fn build_rhai_engine() -> Engine {
 
 #[cfg(test)]
 mod tests {
+    #![allow(clippy::arc_with_non_send_sync)]
     use super::*;
     use anyhow::Result;
-    use calamine::{ExcelDateTime, ExcelDateTimeType, Range};
-    use chrono::NaiveDate;
+    use calamine::{CellErrorType, ExcelDateTime, ExcelDateTimeType, Range};
 
-    use rhai::Dynamic;
-    use rust_decimal::Decimal;
     use std::fs;
     use std::io::Write;
     use std::path::PathBuf;
@@ -628,7 +612,7 @@ mod tests {
     #[test]
     fn test_rhai_sheet_parser() -> Result<()> {
         // 1. Create a dummy Rhai script file using the cleaner builder pattern
-        let script_content = r#"
+        let script_content = r"
             fn parse_sheet_row(row) {
                 // Extract amount and description from row
                 let amount_val = get_float(row[1]);
@@ -647,7 +631,7 @@ mod tests {
                     .with_description(description_str)
                     .create()
             }
-        "#;
+        ";
 
         let script_file_name = "test_rhai_script.rhai";
         let script_path = PathBuf::from(script_file_name);
@@ -675,12 +659,12 @@ mod tests {
 
         // 4. Call parse_sheet with the Rhai SheetFormat
         let transactions = rhai_format.parse_sheet(&range)?;
-        println!("transactions: {:?}", transactions);
+        println!("transactions: {transactions:?}");
 
         // 5. Assert that the returned ExternalTransaction is as expected
         assert_eq!(transactions.len(), 1);
         let transaction = &transactions[0];
-        println!("transaction: {:?}", transaction);
+        println!("transaction: {transaction:?}");
         assert_eq!(
             transaction.date,
             Some(NaiveDate::from_ymd_opt(2023, 1, 15).unwrap())
@@ -704,8 +688,8 @@ mod tests {
         );
 
         // Test float conversion
-        let float_dyn: Dynamic = 3.14.into();
-        assert_eq!(dynamic_to_data(float_dyn), Data::Float(3.14));
+        let float_dyn: Dynamic = 3.15.into();
+        assert_eq!(dynamic_to_data(float_dyn), Data::Float(3.15));
 
         // Test int conversion
         let int_dyn: Dynamic = 42.into();
@@ -721,10 +705,11 @@ mod tests {
     }
 
     #[test]
+    #[allow(clippy::float_cmp)]
     fn test_get_float() {
         // Test float conversion
-        let float_dyn: Dynamic = 3.14.into();
-        assert_eq!(get_float(float_dyn), 3.14);
+        let float_dyn: Dynamic = 3.15.into();
+        assert_eq!(get_float(float_dyn), 3.15);
 
         // Test int conversion
         let int_dyn: Dynamic = 42.into();
@@ -780,13 +765,13 @@ mod tests {
     #[test]
     fn test_better_rhai_style_builder_pattern() -> Result<()> {
         // Test the better.rhai style builder pattern
-        let script_content = r#"
+        let script_content = r"
             fn parse_sheet_row(row) {
                 let amount_val = get_float(row[1]);
                 let description_str = row[2].to_string();
                 let date = create_naive_date_ymd(2023, 1, 15);
                 let amount = new_decimal_from_f64(amount_val);
-                
+
                 // Create transaction using builder pattern (like better.rhai)
                 new_transaction()
                     .with_date(date)
@@ -794,7 +779,7 @@ mod tests {
                     .with_description(description_str)
                     .create()
             }
-        "#;
+        ";
 
         let script_file_name = "test_better_style.rhai";
         let script_path = PathBuf::from(script_file_name);
@@ -843,7 +828,7 @@ mod tests {
         assert!(has_value(Dynamic::from(Some(Decimal::new(1, 0)))));
         assert!(!has_value(Dynamic::from(None::<i64>)));
         assert!(has_value(Dynamic::from(Some(42_i64))));
-        assert!(has_value(Dynamic::from(3.14_f64)));
+        assert!(has_value(Dynamic::from(3.15)));
         assert!(has_value(Dynamic::from(42_i64)));
         assert!(has_value(Dynamic::from(true)));
         assert!(has_value(Dynamic::from("plain")));
@@ -873,7 +858,10 @@ mod tests {
             dynamic_to_option_decimal(Dynamic::from(Some(Decimal::new(12345, 2)))),
             Some(Decimal::new(12345, 2))
         );
-        assert_eq!(dynamic_to_option_decimal(Dynamic::from(None::<Decimal>)), None);
+        assert_eq!(
+            dynamic_to_option_decimal(Dynamic::from(None::<Decimal>)),
+            None
+        );
         assert_eq!(dynamic_to_option_decimal(Dynamic::UNIT), None);
     }
 
@@ -887,7 +875,7 @@ mod tests {
                 false,
             )),
             Data::DateTimeIso("2023-01-15".to_string()),
-            Data::Error(calamine::CellErrorType::NA),
+            Data::Error(CellErrorType::NA),
         ];
         let rhai_row = convert_to_rhai_row(&row);
         assert_eq!(rhai_row[0].clone().cast::<String>(), "2020.08.17.");
@@ -900,13 +888,13 @@ mod tests {
     #[test]
     fn test_rhai_script_can_call_concat() -> Result<()> {
         // concat must be callable from a script with owned Option<String> args
-        let script_content = r#"
+        let script_content = r"
             fn parse_sheet_row(row) {
                 let part1 = cell_to_string(row[0]);
                 let part2 = cell_to_string(row[1]);
                 new_transaction().with_description(concat(part1, part2)).create()
             }
-        "#;
+        ";
 
         let script_file_name = "test_concat_script.rhai";
         let script_path = PathBuf::from(script_file_name);
@@ -940,7 +928,7 @@ mod tests {
     fn test_rhai_parser_skips_empty_transactions() -> Result<()> {
         // A script returning an empty transaction (e.g. for the header row)
         // should have those rows dropped from the parsed result.
-        let script_content = r#"
+        let script_content = r"
             fn parse_sheet_row(row) {
                 let date = cell_to_date(row[0]);
                 if has_value(date) {
@@ -949,7 +937,7 @@ mod tests {
                     new_transaction().create()
                 }
             }
-        "#;
+        ";
 
         let script_file_name = "test_skip_empty.rhai";
         let script_path = PathBuf::from(script_file_name);

@@ -42,8 +42,8 @@ impl<'a> NewSplit<'a> {
         tx_guid: &'a str,
         account_guid: &'a str,
         memo: &'a str,
-        value: DenominatedValue,
-        quantity: DenominatedValue,
+        value: &DenominatedValue,
+        quantity: &DenominatedValue,
     ) -> Self {
         NewSplit {
             guid,
@@ -71,7 +71,7 @@ impl<'a> NewSplit<'a> {
     ) -> Self {
         let value = DenominatedValue::denominate_decimal(amount, currency.fraction);
         let qty = DenominatedValue::denominate_decimal(amount, account.commodity_scu);
-        NewSplit::new_with_defaults(split_guid, tx_guid, &account.guid, memo, value, qty)
+        NewSplit::new_with_defaults(split_guid, tx_guid, &account.guid, memo, &value, &qty)
     }
 
     pub fn insert(

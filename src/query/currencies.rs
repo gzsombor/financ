@@ -1,4 +1,3 @@
-use anyhow::Result;
 use diesel::prelude::*;
 
 use crate::{
@@ -14,14 +13,14 @@ pub struct CommoditiesQuery {
 
 impl CommoditiesQuery {
     pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<Commodities> {
-        use crate::schema::commodities::dsl::*;
+        use crate::schema::commodities::dsl::{commodities, mnemonic, namespace};
 
         let mut query = commodities.into_boxed();
         if let Some(ref name_txt) = self.name_filter {
-            query = query.filter(mnemonic.like(format!("%{}%", name_txt)));
+            query = query.filter(mnemonic.like(format!("%{name_txt}%")));
         }
         if let Some(ref type_txt) = self.type_filter {
-            query = query.filter(namespace.like(format!("%{}%", type_txt)));
+            query = query.filter(namespace.like(format!("%{type_txt}%")));
         }
 
         query
@@ -39,18 +38,18 @@ impl CommoditiesQuery {
             commodity_map
         }
     */
-    pub fn execute_and_display(&self, connection: &mut SqliteConnection) -> Result<usize> {
+    pub fn execute_and_display(&self, connection: &mut SqliteConnection) -> usize {
         let results = self.execute(connection);
         println!("Displaying {} commodities", results.len());
         let len = results.len();
         for commodity in results {
             commodity.display();
         }
-        Ok(len)
+        len
     }
 
     pub fn get_by_guid(connection: &mut SqliteConnection, id: &str) -> Option<Commodities> {
-        use crate::schema::commodities::dsl::*;
+        use crate::schema::commodities::dsl::{commodities, guid};
 
         commodities
             .filter(guid.eq(id))

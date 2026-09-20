@@ -77,11 +77,11 @@ impl TransactionCorrelator {
     }
 
     fn get_min_date(&self) -> Option<NaiveDate> {
-        self.external_transactions.1.to_owned()
+        self.external_transactions.1
     }
 
     fn get_max_date(&self) -> Option<NaiveDate> {
-        self.external_transactions.2.to_owned()
+        self.external_transactions.2
     }
 
     fn build_mapping(&mut self, connection: &mut SqliteConnection) {
@@ -121,13 +121,13 @@ impl TransactionCorrelator {
     pub fn match_transactions(&mut self) -> Vec<ExternalTransaction> {
         let mut working_set = self.external_transactions.0.clone();
         if self.verbose {
-            println!("Starting with {} transactions", &working_set.len());
+            println!("Starting with {} transactions", working_set.len());
         }
         working_set = self.match_transactions_with_delta_day(0, &working_set);
         if self.verbose {
             println!(
                 "After matching with 0, {} transaction remained as unmatched",
-                &working_set.len()
+                working_set.len()
             );
         }
         let mut delta_day = 0;
@@ -138,8 +138,8 @@ impl TransactionCorrelator {
             if self.verbose {
                 println!(
                     "After matching with {}, {} transaction remained as unmatched",
-                    &delta_day,
-                    &working_set.len()
+                    delta_day,
+                    working_set.len()
                 );
             }
         }
@@ -208,6 +208,13 @@ struct AddTransactions<'a> {
 }
 
 impl CorrelationCommand {
+    /// Exhausts the correlation flow against the input spreadsheet, matching
+    /// external transactions to internal records and inserting missing splits.
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the input file cannot be read, the sheet cannot be
+    /// parsed, or the database operations fail.
     pub fn execute(
         &mut self,
         connection: &mut SqliteConnection,
@@ -240,7 +247,7 @@ impl CorrelationCommand {
 
             if self.verbose {
                 for tr in &unmatched_transactions {
-                    println!(" - {}", &tr);
+                    println!(" - {tr}");
                 }
             }
 
@@ -252,11 +259,16 @@ impl CorrelationCommand {
 
             if self.list_extra_transactions {
                 for tr in &db_transactions {
-                    println!(" - {}", &tr);
+                    println!(" - {tr}");
                 }
             }
 
-            if !unmatched_transactions.is_empty() {
+            if unmatched_transactions.is_empty() {
+                term.write_line(&format!(
+                    "No unmatched transactions, everything is {}",
+                    style("ok.").green()
+                ))?;
+            } else {
                 let fee_account = self.fee_account_query.get_one(connection, false);
                 if let Some(counter_account) =
                     self.counterparty_account_query.get_one(connection, true)
@@ -279,11 +291,6 @@ impl CorrelationCommand {
                         "Unable to fix, as account is not specified exactly!"
                     ));
                 }
-            } else {
-                term.write_line(&format!(
-                    "No unmatched transactions, everything is {}",
-                    style("ok.").green()
-                ))?;
             }
             Ok(unmatched_transactions.len())
         } else {
@@ -336,7 +343,7 @@ impl AddTransactions<'_> {
                     }
                     return Ok(());
                 }
-            };
+            }
         }
         Ok(())
     }
@@ -369,7 +376,7 @@ impl AddTransactions<'_> {
         let current_time = Local::now().naive_local();
         let description = transaction
             .get_description_or_category()
-            .unwrap_or_else(|| "".to_owned());
+            .unwrap_or_default();
         let amount = transaction.get_amount().expect("Amount is expected!");
 
         let fee_value = &transaction.transaction_fee.unwrap_or_default();
@@ -425,16 +432,15 @@ impl Answer {
         loop {
             let key = term.read_key()?;
             match key {
-                Key::Char('y') => return Ok(Answer::Yes),
-                Key::Char('Y') => return Ok(Answer::Yes),
                 Key::Enter => return Ok(Answer::Yes),
-                Key::Char('n') => return Ok(Answer::No),
-                Key::Char('N') => return Ok(Answer::No),
                 Key::Escape => return Ok(Answer::Abort),
-                Key::Char('a') => return Ok(Answer::Abort),
-                Key::Char('A') => return Ok(Answer::Abort),
-                Key::Char('l') => return Ok(Answer::All),
-                Key::Char('L') => return Ok(Answer::All),
+                Key::Char(ch) => match ch.to_ascii_lowercase() {
+                    'y' => return Ok(Answer::Yes),
+                    'n' => return Ok(Answer::No),
+                    'a' => return Ok(Answer::Abort),
+                    'l' => return Ok(Answer::All),
+                    _ => {}
+                },
                 _ => {}
             }
         }

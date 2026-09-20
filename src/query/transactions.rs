@@ -31,23 +31,23 @@ impl TransactionQuery {
     }
 
     pub fn execute(&self, connection: &mut SqliteConnection) -> Vec<(Split, Transaction)> {
-        use crate::schema::splits::dsl::*;
-        use crate::schema::transactions::dsl::*;
+        use crate::schema::splits::dsl::{account_guid, memo, splits, tx_guid};
+        use crate::schema::transactions::dsl::{description, post_date, transactions};
 
         let join = splits.inner_join(transactions);
 
         let mut query = join.into_boxed();
         if let Some(ref txid_txt) = self.txid_filter {
-            query = query.filter(tx_guid.like(format!("%{}%", txid_txt)));
+            query = query.filter(tx_guid.like(format!("%{txid_txt}%")));
         }
         if let Some(ref account_txt) = self.account_filter {
-            query = query.filter(account_guid.like(format!("%{}%", account_txt)));
+            query = query.filter(account_guid.like(format!("%{account_txt}%")));
         }
         if let Some(ref name_txt) = self.memo_filter {
-            query = query.filter(memo.like(format!("%{}%", name_txt)));
+            query = query.filter(memo.like(format!("%{name_txt}%")));
         }
         if let Some(ref description_txt) = self.description_filter {
-            query = query.filter(description.like(format!("%{}%", description_txt)));
+            query = query.filter(description.like(format!("%{description_txt}%")));
         }
         if let Some(after_date) = self.after_filter {
             let after_as_txt =
@@ -69,30 +69,29 @@ impl TransactionQuery {
     pub fn execute_and_process(
         &self,
         connection: &mut SqliteConnection,
-        target_account: &Option<Account>,
+        target_account: Option<&Account>,
         term: &Term,
     ) -> Result<usize> {
         let results = self.execute(connection);
         match target_account {
-            None => self.display(results),
-            Some(account) => self.move_splits(connection, results, account, term),
+            None => Ok(Self::display(results)),
+            Some(account) => Self::move_splits(connection, results, account, term),
         }
     }
 
-    fn display(&self, transactions: Vec<(Split, Transaction)>) -> Result<usize> {
+    fn display(transactions: Vec<(Split, Transaction)>) -> usize {
         let len = transactions.len();
-        println!("Displaying {} splits", len);
+        println!("Displaying {len} splits");
         for (split, tx) in transactions {
             println!(
                 "[{}]<{}> - {} - {}",
                 split.account_guid, split.tx_guid, tx, split
             );
         }
-        Ok(len)
+        len
     }
 
     fn move_splits(
-        &self,
         connection: &mut SqliteConnection,
         transactions: Vec<(Split, Transaction)>,
         target_account: &Account,

@@ -165,55 +165,55 @@ pub struct DefaultAccountParams {
 #[derive(Args)]
 pub struct TargetAccountParams {
     #[arg(long = "target-account-name", short = 'r')]
-    pub target_name: Option<String>,
+    pub name: Option<String>,
     #[arg(long = "target-account-parent", short = 'P')]
-    pub target_parent_guid: Option<String>,
+    pub parent_guid: Option<String>,
     #[arg(long = "target-account-guid", short = 'G')]
-    pub target_guid: Option<String>,
+    pub guid: Option<String>,
     #[arg(long = "target-account-type", short = 'T')]
-    pub target_account_type: Option<String>,
+    pub account_type: Option<String>,
     #[arg(long = "target-parent-name")]
-    pub target_parent_name: Option<String>,
+    pub parent_name: Option<String>,
     #[arg(long = "target-commodity-id")]
-    pub target_commodity_id: Option<String>,
+    pub commodity_id: Option<String>,
     #[arg(long = "target-commodity-name")]
-    pub target_commodity_name: Option<String>,
+    pub commodity_name: Option<String>,
 }
 
 #[derive(Args)]
 pub struct FeeAccountParams {
     #[arg(long = "fee-account-name", short = 'E')]
-    pub fee_name: Option<String>,
+    pub name: Option<String>,
     #[arg(long = "fee-account-parent", short = 'R')]
-    pub fee_parent_guid: Option<String>,
+    pub parent_guid: Option<String>,
     #[arg(long = "fee-account-guid", short = 'U')]
-    pub fee_guid: Option<String>,
+    pub guid: Option<String>,
     #[arg(long = "fee-account-type", short = 'Y')]
-    pub fee_account_type: Option<String>,
+    pub account_type: Option<String>,
     #[arg(long = "fee-parent-name")]
-    pub fee_parent_name: Option<String>,
+    pub parent_name: Option<String>,
     #[arg(long = "fee-commodity-id")]
-    pub fee_commodity_id: Option<String>,
+    pub commodity_id: Option<String>,
     #[arg(long = "fee-commodity-name")]
-    pub fee_commodity_name: Option<String>,
+    pub commodity_name: Option<String>,
 }
 
 #[derive(Args)]
 pub struct FromAccountParams {
     #[arg(long = "from-account-name", short = 'N')]
-    pub from_name: Option<String>,
+    pub name: Option<String>,
     #[arg(long = "from-account-parent", short = 'P')]
-    pub from_parent_guid: Option<String>,
+    pub parent_guid: Option<String>,
     #[arg(long = "from-account-guid", short = 'G')]
-    pub from_guid: Option<String>,
+    pub guid: Option<String>,
     #[arg(long = "from-account-type", short = 'T')]
-    pub from_account_type: Option<String>,
+    pub account_type: Option<String>,
     #[arg(long = "from-parent-name")]
-    pub from_parent_name: Option<String>,
+    pub parent_name: Option<String>,
     #[arg(long = "from-commodity-id")]
-    pub from_commodity_id: Option<String>,
+    pub commodity_id: Option<String>,
     #[arg(long = "from-commodity-name")]
-    pub from_commodity_name: Option<String>,
+    pub commodity_name: Option<String>,
 }
 
 fn non_empty_string(s: &str) -> Result<String, String> {

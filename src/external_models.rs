@@ -38,16 +38,16 @@ impl fmt::Display for ExternalTransaction {
             f.write_str(" ----------")?;
         }
         if let Some(amount) = self.amount {
-            write!(f, " {}", amount)?;
+            write!(f, " {amount}")?;
         }
         if let Some(transaction_fee) = self.transaction_fee {
-            write!(f, " (fee: {})", transaction_fee)?;
+            write!(f, " (fee: {transaction_fee})")?;
         }
         if let Some(category) = &self.category {
-            write!(f, " [{}]", category)?;
+            write!(f, " [{category}]")?;
         }
         if let Some(description) = &self.description {
-            write!(f, " - {}", description)?;
+            write!(f, " - {description}")?;
         }
         Ok(())
     }
@@ -196,7 +196,7 @@ impl ExternalTransaction {
             }
             (None, Some(name)) => name.clone(),
             (Some(acc), None) => acc.clone(),
-            (_, _) => "".to_owned(),
+            (_, _) => String::new(),
         }
     }
 }
@@ -233,12 +233,11 @@ impl SheetDefinition {
         format: &dyn SheetParser,
         term: &Term,
     ) -> Result<ExternalTransactionList> {
-        let sheet_name = match maybe_sheet_name {
-            Some(name) => name,
-            None => {
-                let sheet_names = self.workbook.sheet_names();
-                sheet_names.first().unwrap().to_owned()
-            }
+        let sheet_name = if let Some(name) = maybe_sheet_name {
+            name
+        } else {
+            let sheet_names = self.workbook.sheet_names();
+            sheet_names.first().unwrap().to_owned()
         };
         if let Ok(sheet) = self.workbook.worksheet_range(&sheet_name) {
             term.write_line(&format!("found sheet '{}'", style(&sheet_name).blue()))?;
@@ -256,8 +255,7 @@ impl SheetDefinition {
                 style(&sheet_name).red()
             ))?;
             Err(anyhow!(
-                "Sheet '{}' not found, no transactions will be imported!",
-                sheet_name
+                "Sheet '{sheet_name}' not found, no transactions will be imported!"
             ))
         }
     }
@@ -268,7 +266,7 @@ impl SheetDefinition {
     ) -> (Option<NaiveDate>, Option<NaiveDate>) {
         let dates = transactions
             .iter()
-            .flat_map(|current| current.get_matching_date(matching));
+            .filter_map(|current| current.get_matching_date(matching));
         let min = dates.clone().min();
         let max = dates.max();
 
