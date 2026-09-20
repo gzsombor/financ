@@ -15,6 +15,7 @@ pub(crate) enum Commands {
     ListAccounts(ListAccountsArgs),
     Transactions(TransactionsArgs),
     Correlate(CorrelateArgs),
+    EvalScript(EvalScriptArgs),
     Commodities(CommoditiesArgs),
     Completions {
         #[arg(value_enum)]
@@ -106,6 +107,25 @@ pub struct CorrelateArgs {
 
     #[command(flatten)]
     pub fee_account: FeeAccountParams,
+}
+
+#[derive(Args)]
+pub struct EvalScriptArgs {
+    // The file which contains the spreadsheet to evaluate the script against
+    #[arg(long = "input", short = 'i', value_parser = non_empty_string)]
+    pub input: String,
+
+    // The name of the sheet
+    #[arg(long = "sheet-name", short = 's')]
+    pub sheet_name: Option<String>,
+
+    // Rhai scripts to load for custom parsing
+    #[arg(long = "rhai-script", short = 'r')]
+    pub rhai_scripts: Vec<PathBuf>,
+
+    // Limit number of shown transactions
+    #[arg(long = "limit", short = 'l', default_value_t = 10)]
+    pub limit: usize,
 }
 
 #[derive(Args)]

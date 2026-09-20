@@ -33,12 +33,12 @@ use std::io;
 use anyhow::{Context, Result};
 use clap::{CommandFactory, Parser};
 use clap_complete::{Shell, generate};
-use cli::{Commands, CommoditiesArgs, CorrelateArgs, ListAccountsArgs, TransactionsArgs};
+use cli::{Commands, CommoditiesArgs, CorrelateArgs, EvalScriptArgs, ListAccountsArgs, TransactionsArgs};
 use console::{Term, style};
 
 use crate::cli::Cli;
 use crate::correlator::CorrelationCommand;
-use crate::external_models::Matching;
+use crate::external_models::{Matching, SheetDefinition};
 use crate::formats::{SheetFormat, build_rhai_engine};
 use crate::query::accounts::ToAccountQuery;
 use crate::query::currencies::CommoditiesQuery;
@@ -53,6 +53,7 @@ fn main() {
         Commands::Transactions(args) => handle_list_entries(args),
         Commands::Commodities(args) => handle_commodities(args),
         Commands::Correlate(args) => handle_correlate(args),
+        Commands::EvalScript(args) => handle_eval_script(args),
         Commands::Completions { shell } => handle_shell_completions(shell),
     }
     .unwrap();
@@ -150,17 +151,7 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
     };
 
     let format = if !cmd.rhai_scripts.is_empty() {
-        let engine = build_rhai_engine();
-        let mut ast = engine.compile("fn parse_sheet_row(row) { new_external_transaction(None, None, None, None, None, None, None, None, None) }").unwrap(); // Default script
-        for script_path in cmd.rhai_scripts {
-            let script_content = fs::read_to_string(&script_path)
-                .with_context(|| format!("Failed to read Rhai script from {:?}", script_path))?;
-            let compiled_script = engine
-                .compile(script_content)
-                .with_context(|| format!("Failed to compile Rhai script from {:?}", script_path))?;
-            ast = ast.merge(&compiled_script);
-        }
-        SheetFormat::new_rhai(ast, "parse_sheet_row".to_string())
+        load_rhai_format(&cmd.rhai_scripts)?
     } else {
         cmd.format
             .clone()
@@ -168,4 +159,46 @@ fn handle_correlate(cmd: CorrelateArgs) -> Result<usize> {
             .with_context(|| format!("Unknown format:'{}'!", cmd.format.unwrap_or_default()))?
     };
     correlation_command.execute(&mut connection, &term, &format)
+}
+
+fn handle_eval_script(args: EvalScriptArgs) -> Result<usize> {
+    let term = Term::stdout();
+    let format = load_rhai_format(&args.rhai_scripts)?;
+
+    let mut sheet_definition = SheetDefinition::new(&args.input)?;
+    let external_transactions =
+        sheet_definition.load(args.sheet_name, Matching::ByBooking, &format, &term)?;
+    let shown = external_transactions.0.len().min(args.limit);
+    for transaction in external_transactions.0.iter().take(args.limit) {
+        term.write_line(&format!(" - {}", style(transaction).cyan()))?;
+    }
+    term.write_line(&format!(
+        "Parsed {} {}",
+        style(&external_transactions.0.len()).cyan(),
+        style("transactions").blue()
+    ))?;
+    if shown < external_transactions.0.len() {
+        term.write_line(&format!(
+            "Showing {} {}",
+            style(&shown).cyan(),
+            style("transactions").blue()
+        ))?;
+    }
+    Ok(0)
+}
+
+fn load_rhai_format(rhai_scripts: &[std::path::PathBuf]) -> Result<SheetFormat> {
+    let engine = build_rhai_engine();
+    let mut ast = engine.compile(
+        "fn parse_sheet_row(row) { new_external_transaction(None, None, None, None, None, None, None, None, None) }",
+    )?;
+    for script_path in rhai_scripts {
+        let script_content = fs::read_to_string(script_path)
+            .with_context(|| format!("Failed to read Rhai script from {:?}", script_path))?;
+        let compiled_script = engine
+            .compile(script_content)
+            .with_context(|| format!("Failed to compile Rhai script from {:?}", script_path))?;
+        ast = ast.merge(&compiled_script);
+    }
+    Ok(SheetFormat::new_rhai(ast, "parse_sheet_row".to_string()))
 }
